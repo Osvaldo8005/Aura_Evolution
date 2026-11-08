@@ -839,13 +839,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraFollow3D
   objetivo: {fileID: 1148232439}
+  seguirEjeX: 1
   offsetX: 0
+  seguirEjeY: 1
+  offsetY: 2.5
   alturaFijaY: 4
   offsetConstanteZ: -8
-  suavidad: 8
-  offsetMira: {x: 0, y: 1.2, z: 0}
   fijarZMundial: 0
   posicionZMundial: -10
+  suavidad: 8
+  offsetMira: {x: 0, y: 1.2, z: 0}
 --- !u!1 &370103560
 GameObject:
   m_ObjectHideFlags: 0
@@ -2407,6 +2410,79 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &979222851
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 979222853}
+  - component: {fileID: 979222852}
+  m_Layer: 0
+  m_Name: GeneradorNiveles
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &979222852
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 979222851}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4575d9971866f4548b326f24d9cbfcc9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GeneradorNiveles
+  jugador: {fileID: 1148232439}
+  prefabsModulosOpcionales: []
+  materialPlataforma: {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  modulosSimultaneos: 7
+  modulosSegurosAlInicio: 2
+  distanciaGeneracionAdelante: 85
+  distanciaDestruccionAtras: 35
+  dimensionesPlataforma: {x: 22, y: 1.2, z: 22}
+  distanciaEntrePlataformasBase: 2.5
+  distanciaEntrePlataformasMaxima: 5.8
+  desplazamientoLateralMaximoX: 3.5
+  variacionAlturaMaximaY: 0.6
+  porcionesPorModulo: 4
+  minZonasPeligroPorModulo: 1
+  maxZonasPeligroPorModulo: 3
+  colorPlataformaPar: {r: 0.22, g: 0.3, b: 0.42, a: 1}
+  colorPlataformaImpar: {r: 0.17, g: 0.24, b: 0.34, a: 1}
+  colorZonaPeligro: {r: 0.9, g: 0.16, b: 0.16, a: 1}
+  probabilidadObstaculoBase: 0.4
+  probabilidadObstaculoMaxima: 0.85
+  velocidadBaseObstaculo: 6.5
+  velocidadMaximaObstaculo: 15
+  probabilidadColeccionables: 0.8
+  maxMonedasPorModulo: 3
+  puntosPorMoneda: 100
+  totalModulosGenerados: 0
+  distanciaActualEntrePlataformas: 0
+  velocidadActualObstaculos: 0
+  zonasPeligroActuales: 0
+--- !u!4 &979222853
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 979222851}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &992402638
 GameObject:
   m_ObjectHideFlags: 0
@@ -2880,8 +2956,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ecfce3af6ed9c63438055511c6973ba7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController3D
-  velocidad: 6
-  fuerzaSalto: 5
+  velocidad: 8
+  velocidadBase: 8
+  velocidadMaxima: 14.5
+  velocidadGiro: 12
+  fuerzaSalto: 8.5
+  alturaCaidaMuerte: -4.5
+  enElSuelo: 1
 --- !u!95 &1148232441
 Animator:
   serializedVersion: 7
@@ -4160,7 +4241,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1900220002
 Transform:
   m_ObjectHideFlags: 0
@@ -4495,8 +4576,12 @@ MonoBehaviour:
   puntosPorSegundo: 10
   puntosPorMetro: 5
   tiempoPorNivelDificultad: 12
+  distanciaPorNivelDificultad: 90
   incrementoDificultadPorNivel: 0.15
   nivelMaximo: 10
+  reinicioAutomaticoAlPerder: 1
+  tiempoEsperaReinicio: 1.4
+  reinicioEnCaliente: 1
 --- !u!4 &2038245488
 Transform:
   m_ObjectHideFlags: 0
@@ -4620,3 +4705,4 @@ SceneRoots:
   - {fileID: 2038245488}
   - {fileID: 283618787}
   - {fileID: 29525586}
+  - {fileID: 979222853}

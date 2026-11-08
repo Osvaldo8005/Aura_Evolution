@@ -85,4 +85,20 @@ public class CameraFollow3D : MonoBehaviour
         Vector3 puntoAMirar = new Vector3(objetivo.position.x + offsetMira.x, objetivo.position.y + offsetMira.y, objetivo.position.z + offsetMira.z);
         transform.LookAt(puntoAMirar);
     }
+
+    /// <summary>
+    /// Reposiciona la cámara instantáneamente detrás del jugador al reiniciar el Game Loop.
+    /// </summary>
+    public void ReposicionarInmediato()
+    {
+        if (objetivo == null) return;
+
+        float destinoX = seguirEjeX ? (objetivo.position.x + offsetX) : transform.position.x;
+        float destinoY = seguirEjeY ? (objetivo.position.y + offsetY) : alturaFijaY;
+        float destinoZ = fijarZMundial ? posicionZMundial : (objetivo.position.z + offsetConstanteZ);
+
+        transform.position = new Vector3(destinoX, destinoY, destinoZ);
+        Vector3 puntoAMirar = new Vector3(objetivo.position.x + offsetMira.x, objetivo.position.y + offsetMira.y, objetivo.position.z + offsetMira.z);
+        transform.LookAt(puntoAMirar);
+    }
 }

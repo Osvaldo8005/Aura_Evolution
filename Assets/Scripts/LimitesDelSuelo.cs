@@ -1,8 +1,8 @@
 using UnityEngine;
 
 /// <summary>
-/// Crea 4 BoxColliders invisibles en los bordes reales del Suelo (Plane).
-/// No se parentan al Plane para no heredar su Scale 10.
+/// Crea 4 BoxColliders invisibles en los bordes del Suelo estático cuando no se usa el GeneradorNiveles.
+/// Si GeneradorNiveles está activo (Actividad 4.3), se desactiva automáticamente para permitir el avance infinito.
 /// </summary>
 public class LimitesDelSuelo : MonoBehaviour
 {
@@ -16,11 +16,21 @@ public class LimitesDelSuelo : MonoBehaviour
 
     private void Awake()
     {
+        if (FindAnyObjectByType<GeneradorNiveles>() != null)
+        {
+            gameObject.SetActive(false);
+            return;
+        }
         CrearOActualizar();
     }
 
     public bool CrearOActualizar()
     {
+        if (FindAnyObjectByType<GeneradorNiveles>() != null)
+        {
+            return false;
+        }
+
         GameObject suelo = GameObject.Find("Suelo");
         if (suelo == null)
         {

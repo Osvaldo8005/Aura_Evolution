@@ -12,7 +12,7 @@ using TMPro;
 /// </summary>
 public static class ConfiguradorActividadesEditor
 {
-    [MenuItem("Aura Evolution/Configurar Actividades 4.1 y 4.2 (UI, Camara, GameManager)")]
+    [MenuItem("Aura Evolution/Configurar Actividades 4.1, 4.2 y 4.3 (UI, Camara, GameManager, Niveles)")]
     public static void ConfigurarTodo()
     {
         Scene scene = SceneManager.GetActiveScene();
@@ -24,7 +24,7 @@ public static class ConfiguradorActividadesEditor
 
         Undo.IncrementCurrentGroup();
         int groupIndex = Undo.GetCurrentGroup();
-        Undo.SetCurrentGroupName("Configurar Actividad 4.1");
+        Undo.SetCurrentGroupName("Configurar Actividades 4.1 - 4.3");
 
         int uiLayer = LayerMask.NameToLayer("UI");
 
@@ -33,6 +33,7 @@ public static class ConfiguradorActividadesEditor
         LimpiarObjetoSiExiste("Canvas_HUD");
         LimpiarObjetoSiExiste("GameManager");
         LimpiarObjetoSiExiste("GeneradorObstaculos");
+        LimpiarObjetoSiExiste("GeneradorNiveles");
 
         // 2. Configurar Jugador
         GameObject jugador = GameObject.Find("Jugador");
@@ -124,6 +125,19 @@ public static class ConfiguradorActividadesEditor
         GeneradorObstaculos spawner = spawnerObj.AddComponent<GeneradorObstaculos>();
         EditorUtility.SetDirty(spawner);
 
+        // 10.5. Configurar Generador de Niveles Procedurales (Actividad 4.3)
+        GameObject genNivelesObj = new GameObject("GeneradorNiveles");
+        Undo.RegisterCreatedObjectUndo(genNivelesObj, "Crear GeneradorNiveles");
+        GeneradorNiveles genNiveles = genNivelesObj.AddComponent<GeneradorNiveles>();
+        if (jugador != null) genNiveles.jugador = jugador.transform;
+        GameObject suelo = GameObject.Find("Suelo");
+        if (suelo != null)
+        {
+            Renderer renSuelo = suelo.GetComponent<Renderer>();
+            if (renSuelo != null) genNiveles.materialPlataforma = renSuelo.sharedMaterial;
+        }
+        EditorUtility.SetDirty(genNiveles);
+
         // 11. Conectar botones táctiles al personaje
         if (pc != null)
         {
@@ -137,12 +151,12 @@ public static class ConfiguradorActividadesEditor
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
 
-        EditorUtility.DisplayDialog("Actividad 4.1 Configurada",
-            "¡Interfaz y Juego configurados al 100%!\n\n" +
-            "✔ Botón 'Menú' visible arriba a la derecha para volver a MenuPrincipal.\n" +
-            "✔ Controles táctiles móviles en pantalla (Cruceta y Salto).\n" +
-            "✔ Textos de Puntaje, Récord y Dificultad vinculados.\n" +
-            "✔ Cámara sincronizada en X y Z con altura Y fija.\n\n" +
+        EditorUtility.DisplayDialog("Actividades 4.1, 4.2 y 4.3 Configuradas",
+            "¡Interfaz, Niveles Procedurales y Game Loop configurados al 100%!\n\n" +
+            "✔ GeneradorNiveles procedural e infinito listo en el Inspector.\n" +
+            "✔ Bucle de Juego (Game Loop) con reinicio automático al perder.\n" +
+            "✔ Curva de dificultad progresiva conectada a plataformas y obstáculos.\n" +
+            "✔ Controles táctiles móviles y textos de Puntaje, Récord y Dificultad vinculados.\n\n" +
             "La escena ha sido guardada automáticamente.",
             "¡Listo!");
     }
@@ -375,7 +389,7 @@ public static class ConfiguradorActividadesEditor
         // Subtítulo
         CrearTextoTMP(canvasObj.transform, "Subtitulo_Juego", uiLayer,
             new Vector2(0.5f, 0.65f), new Vector2(0.5f, 0.65f), new Vector2(0.5f, 0.5f),
-            Vector2.zero, new Vector2(900f, 60f), "Desarrollo de Videojuegos 3D Móvil", TextAlignmentOptions.Center);
+            Vector2.zero, new Vector2(900f, 60f), "Despierta tu Aura. Avanza y evoluciona.", TextAlignmentOptions.Center);
 
         // Botón Jugar
         GameObject btnJugar = CrearBotonGenerico(canvasObj.transform, "Btn_Jugar", uiLayer,

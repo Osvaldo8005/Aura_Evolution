@@ -1,9 +1,10 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Generador de obstáculos con dificultad progresiva.
+/// Generador de oleadas de obstáculos con dificultad progresiva.
 /// Conforme la dificultad sube, los obstáculos aparecen con mayor frecuencia
-/// y se desplazan a mayor velocidad.
+/// y se desplazan a mayor velocidad, acompañando el avance infinito del jugador.
 /// </summary>
 public class GeneradorObstaculos : MonoBehaviour
 {
@@ -13,32 +14,56 @@ public class GeneradorObstaculos : MonoBehaviour
 
     [Header("Frecuencia de Generación")]
     [Tooltip("Intervalo base en segundos entre cada obstáculo generado")]
-    public float intervaloBase = 3.0f;
+    public float intervaloBase = 3.2f;
 
     [Tooltip("Intervalo mínimo posible (límite de dificultad máxima)")]
-    public float intervaloMinimo = 0.8f;
+    public float intervaloMinimo = 0.85f;
 
     [Header("Velocidad de Obstáculos")]
     public float velocidadBaseObstaculo = 7f;
     public float velocidadMaximaObstaculo = 16f;
 
-    [Header("Área de Generación (Límites de la Arena)")]
-    public float rangoX = 20f;
+    [Header("Área de Generación Relativa al Avance")]
+    [Tooltip("Rango lateral X sobre las plataformas donde pueden aparecer obstáculos")]
+    public float rangoX = 9.5f;
+
+    [Tooltip("Distancia por delante del jugador en el eje Z donde se generan los obstáculos")]
     public float posicionZGeneracion = 45f;
-    public float alturaY = 1.0f;
+
+    [Tooltip("Altura Y sobre la plataforma a la que aparecen los obstáculos")]
+    public float alturaY = 1.1f;
 
     private float temporizador = 0f;
     private float intervaloActual;
     private float velocidadActualObstaculo;
+    private Transform jugador;
+    private Material materialObstaculo;
+    private readonly List<GameObject> obstaculosActivos = new List<GameObject>();
 
     private void Start()
     {
         intervaloActual = intervaloBase;
         velocidadActualObstaculo = velocidadBaseObstaculo;
+
+        PlayerController3D pc = FindAnyObjectByType<PlayerController3D>();
+        if (pc != null)
+        {
+            jugador = pc.transform;
+        }
+
+        if (GeneradorNiveles.Instance != null && GeneradorNiveles.Instance.materialPlataforma != null)
+        {
+            materialObstaculo = GeneradorNiveles.Instance.materialPlataforma;
+        }
     }
 
     private void Update()
     {
+        if (GameManager.Instance != null && GameManager.Instance.JuegoTerminado)
+        {
+            return;
+        }
+
         temporizador += Time.deltaTime;
 
         if (temporizador >= intervaloActual)
@@ -49,12 +74,16 @@ public class GeneradorObstaculos : MonoBehaviour
     }
 
     /// <summary>
-    /// Genera un obstáculo en el escenario. Si no hay prefab, crea un cubo rojo proceduralmente.
+    /// Genera un obstáculo por delante del jugador en el escenario infinito.
     /// </summary>
     private void GenerarObstaculo()
     {
-        float posX = Random.Range(-rangoX, rangoX);
-        Vector3 posSpawn = new Vector3(posX, alturaY, posicionZGeneracion);
+        float baseX = (jugador != null) ? jugador.position.x : 0f;
+        float baseY = (jugador != null) ? Mathf.Max(0f, jugador.position.y - 2.5f) : 0f;
+        float baseZ = (jugador != null) ? jugador.position.z : 0f;
+
+        float posX = baseX + Random.Range(-rangoX, rangoX);
+        Vector3 posSpawn = new Vector3(posX, baseY + alturaY, baseZ + posicionZGeneracion);
 
         GameObject nuevoObstaculo;
 
@@ -64,7 +93,6 @@ public class GeneradorObstaculos : MonoBehaviour
         }
         else
         {
-            // Generación automática: Crea un cubo físico con collider y color rojo
             nuevoObstaculo = GameObject.CreatePrimitive(PrimitiveType.Cube);
             nuevoObstaculo.name = "Obstaculo_Auto";
             nuevoObstaculo.transform.position = posSpawn;
@@ -73,20 +101,32 @@ public class GeneradorObstaculos : MonoBehaviour
             Renderer ren = nuevoObstaculo.GetComponent<Renderer>();
             if (ren != null)
             {
-                ren.material.color = new Color(0.9f, 0.2f, 0.2f); // Rojo peligro
+                if (materialObstaculo != null)
+                {
+                    ren.sharedMaterial = materialObstaculo;
+                }
+                Color colorPeligro = new Color(0.95f, 0.25f, 0.15f, 1f);
+                Material mat = ren.material;
+                mat.color = colorPeligro;
+                if (mat.HasProperty("_BaseColor"))
+                {
+                    mat.SetColor("_BaseColor", colorPeligro);
+                }
             }
         }
 
-        // Asegurar tag o componente
-        nuevoObstaculo.tag = "Untagged"; // Funciona con el script y por nombre
         Obstaculo scriptObs = nuevoObstaculo.GetComponent<Obstaculo>();
         if (scriptObs == null)
         {
             scriptObs = nuevoObstaculo.AddComponent<Obstaculo>();
         }
 
+        scriptObs.modo = Obstaculo.ModoMovimiento.Lineal;
         scriptObs.velocidad = velocidadActualObstaculo;
-        scriptObs.direccion = new Vector3(0f, 0f, -1f); // Viaja de Norte (+Z) a Sur (-Z)
+        scriptObs.direccion = new Vector3(0f, 0f, -1f);
+        scriptObs.destruirPorTiempo = true;
+
+        obstaculosActivos.Add(nuevoObstaculo);
     }
 
     /// <summary>
@@ -94,10 +134,23 @@ public class GeneradorObstaculos : MonoBehaviour
     /// </summary>
     public void ActualizarDificultad(float multiplicador)
     {
-        // El intervalo se reduce (más frecuente)
         intervaloActual = Mathf.Max(intervaloMinimo, intervaloBase / multiplicador);
-
-        // La velocidad aumenta
         velocidadActualObstaculo = Mathf.Min(velocidadMaximaObstaculo, velocidadBaseObstaculo * multiplicador);
+    }
+
+    /// <summary>
+    /// Elimina todos los obstáculos activos al reiniciar el Game Loop.
+    /// </summary>
+    public void LimpiarObstaculos()
+    {
+        for (int i = obstaculosActivos.Count - 1; i >= 0; i--)
+        {
+            if (obstaculosActivos[i] != null)
+            {
+                Destroy(obstaculosActivos[i]);
+            }
+        }
+        obstaculosActivos.Clear();
+        temporizador = 0f;
     }
 }
