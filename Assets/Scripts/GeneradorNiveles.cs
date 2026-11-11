@@ -135,6 +135,15 @@ public class GeneradorNiveles : MonoBehaviour
 
     private void Start()
     {
+        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Nivel2")
+        {
+            colorPlataformaPar = new Color(0.28f, 0.20f, 0.42f, 1f);
+            colorPlataformaImpar = new Color(0.20f, 0.14f, 0.32f, 1f);
+            distanciaEntrePlataformasBase = Mathf.Max(distanciaEntrePlataformasBase, 3.2f);
+            velocidadBaseObstaculo = Mathf.Max(velocidadBaseObstaculo, 8.2f);
+            probabilidadObstaculoBase = Mathf.Max(probabilidadObstaculoBase, 0.55f);
+        }
+
         InicializarReferenciasYMaterial();
         PrepararEscenarioParaNivelProcedural();
         ReiniciarYGenerarNivelInicial();

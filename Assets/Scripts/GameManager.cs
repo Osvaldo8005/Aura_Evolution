@@ -5,9 +5,9 @@ using UnityEngine.SceneManagement;
 using TMPro;
 
 /// <summary>
-/// Controlador principal del juego y del Bucle de Juego (Game Loop).
+/// Controlador principal del juego, del Bucle de Juego (Game Loop) y de la Navegación entre Niveles (Actividad 4.5).
 /// Gestiona la Interfaz de Usuario (UI), el Guardado Persistente (PlayerPrefs),
-/// la Curva de Dificultad Progresiva y el Reinicio del Flujo al Perder (Actividad 4.3).
+/// la Curva de Dificultad Progresiva, el Reinicio al Perder y la Transición limpia entre Nivel 1 y Nivel 2 con SceneManager.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
@@ -25,6 +25,28 @@ public class GameManager : MonoBehaviour
 
     [Tooltip("Panel de Game Over que se muestra al perder antes de reiniciar el bucle")]
     public GameObject panelGameOver;
+
+    [Tooltip("Panel que se muestra al cumplir la condición de victoria del nivel actual (Actividad 4.5)")]
+    public GameObject panelNivelCompletado;
+
+    [Header("Flujo de Niveles y Transición con SceneManager (Actividad 4.5)")]
+    [Tooltip("Número de escena de nivel actual (1 = SampleScene / Nivel 1, 2 = Nivel2)")]
+    public int numeroNivelEscena = 1;
+
+    [Tooltip("Puntaje objetivo necesario para completar el nivel actual y avanzar al siguiente")]
+    public int puntajeMetaParaCompletar = 500;
+
+    [Tooltip("Tiempo de supervivencia alternativo en segundos para completar el nivel actual")]
+    public float tiempoMetaSegundos = 35f;
+
+    [Tooltip("Nombre de la escena del siguiente nivel a cargar con SceneManager")]
+    public string escenaSiguienteNivel = "Nivel2";
+
+    [Tooltip("Nombre de la escena del Menú Principal")]
+    public string escenaMenuPrincipal = "MenuPrincipal";
+
+    [Tooltip("Tecla rápida para completar el nivel inmediatamente durante pruebas")]
+    public KeyCode teclaCompletarNivelRapido = KeyCode.N;
 
     [Header("Contador y Avance Uniforme")]
     [Tooltip("Puntos ganados de forma continua por segundo")]
@@ -52,7 +74,7 @@ public class GameManager : MonoBehaviour
 
     [Tooltip("Segundos de espera mostrando el aviso de derrota antes de reiniciar automáticamente")]
     [Range(0f, 5f)]
-    public float tiempoEsperaReinicio = 1.2f;
+    public float tiempoEsperaReinicio = 1.4f;
 
     [Tooltip("Si está activo, reinicia el nivel procedural, jugador y puntaje en caliente sin recargar toda la escena")]
     public bool reinicioEnCaliente = true;
@@ -70,6 +92,7 @@ public class GameManager : MonoBehaviour
     private int nivelActual = 1;
     private float multiplicadorDificultad = 1.0f;
     private bool juegoTerminado = false;
+    private bool nivelCompletado = false;
 
     public bool JuegoTerminado => juegoTerminado;
 
@@ -79,6 +102,10 @@ public class GameManager : MonoBehaviour
     private GestorVisual gestorVisual;
     private CameraFollow3D camaraFollow;
     private TMP_Text textoDetalleGameOver;
+    private TMP_Text textoTituloNivelCompletado;
+    private TMP_Text textoDetalleNivelCompletado;
+    private TMP_Text textoBotonSiguienteNivel;
+    private TMP_Text textoNarrativaProgreso;
     private Coroutine corrutinaReinicio;
 
     private void Awake()
@@ -92,6 +119,27 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+
+        ConfigurarParametrosSegunEscenaActiva();
+    }
+
+    private void ConfigurarParametrosSegunEscenaActiva()
+    {
+        string nombreEscena = SceneManager.GetActiveScene().name;
+        if (nombreEscena == "Nivel2")
+        {
+            numeroNivelEscena = 2;
+            if (puntajeMetaParaCompletar <= 500) puntajeMetaParaCompletar = 800;
+            if (tiempoMetaSegundos <= 35f) tiempoMetaSegundos = 45f;
+            escenaSiguienteNivel = "SampleScene";
+        }
+        else
+        {
+            numeroNivelEscena = 1;
+            if (puntajeMetaParaCompletar <= 0) puntajeMetaParaCompletar = 500;
+            if (tiempoMetaSegundos <= 0f) tiempoMetaSegundos = 35f;
+            escenaSiguienteNivel = "Nivel2";
+        }
     }
 
     private void OnDestroy()
@@ -104,6 +152,9 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
+        Time.timeScale = 1f;
+        BotonTactil.ReiniciarEstados();
+
         jugador = FindAnyObjectByType<PlayerController3D>();
         spawner = FindAnyObjectByType<GeneradorObstaculos>();
         generadorNiveles = FindAnyObjectByType<GeneradorNiveles>();
@@ -116,7 +167,7 @@ public class GameManager : MonoBehaviour
             generadorNiveles = genObj.AddComponent<GeneradorNiveles>();
         }
 
-        // Garantizar que el Gestor Visual (Actividad 4.4: fondo, color del personaje e iluminación) exista en la escena
+        // Garantizar que el Gestor Visual (Actividad 4.4) exista en la escena
         gestorVisual = FindAnyObjectByType<GestorVisual>();
         if (gestorVisual == null)
         {
@@ -132,16 +183,25 @@ public class GameManager : MonoBehaviour
         {
             panelGameOver.SetActive(false);
         }
+
+        if (panelNivelCompletado != null)
+        {
+            panelNivelCompletado.SetActive(false);
+        }
     }
 
     private void Update()
     {
         if (juegoTerminado)
         {
-            // Permitir reinicio inmediato con tecla R durante la pantalla de derrota
+            // Permitir reinicio inmediato con tecla R o avanzar al siguiente nivel con Enter/Espacio si completó el nivel
             if (Input.GetKeyDown(KeyCode.R))
             {
                 ReiniciarJuego();
+            }
+            else if (nivelCompletado && Input.GetKeyDown(KeyCode.Return))
+            {
+                CargarSiguienteNivel();
             }
             return;
         }
@@ -162,6 +222,14 @@ public class GameManager : MonoBehaviour
 
         // 2. CURVA DE DIFICULTAD PROGRESIVA
         ActualizarCurvaDificultad();
+
+        // 3. VERIFICAR CONDICIÓN DE VICTORIA DEL NIVEL (Actividad 4.5)
+        if (puntajeActual >= puntajeMetaParaCompletar ||
+            tiempoJugado >= tiempoMetaSegundos ||
+            Input.GetKeyDown(teclaCompletarNivelRapido))
+        {
+            CompletarNivelActual();
+        }
     }
 
     /// <summary>
@@ -186,11 +254,15 @@ public class GameManager : MonoBehaviour
         puntajeActual = Mathf.FloorToInt(puntajeAcumuladoFloat);
         VerificarYGuardarRecord();
         ActualizarTextosUI();
+
+        if (puntajeActual >= puntajeMetaParaCompletar)
+        {
+            CompletarNivelActual();
+        }
     }
 
     /// <summary>
     /// Curva de dificultad progresiva basada en el tiempo jugado y la distancia recorrida.
-    /// Incrementa la velocidad del jugador, la generación de obstáculos y la complejidad de los niveles procedurales.
     /// </summary>
     private void ActualizarCurvaDificultad()
     {
@@ -245,7 +317,7 @@ public class GameManager : MonoBehaviour
     {
         if (textoPuntaje != null)
         {
-            textoPuntaje.text = $"Puntaje: {puntajeActual}  |  Avance: {distanciaRecorrida:F0}m";
+            textoPuntaje.text = $"Puntaje: {puntajeActual}/{puntajeMetaParaCompletar}  |  Avance: {distanciaRecorrida:F0}m";
         }
 
         if (textoRecord != null)
@@ -256,7 +328,13 @@ public class GameManager : MonoBehaviour
         if (textoDificultad != null)
         {
             float velActual = (jugador != null) ? jugador.ObtenerVelocidadActual() : 8f;
-            textoDificultad.text = $"Dificultad: Nivel {nivelActual} (Vel: {velActual:F1})";
+            textoDificultad.text = $"Nivel {numeroNivelEscena} - Dif. {nivelActual} (Vel: {velActual:F1})";
+        }
+
+        if (textoNarrativaProgreso != null)
+        {
+            float segRestantes = Mathf.Max(0f, tiempoMetaSegundos - tiempoJugado);
+            textoNarrativaProgreso.text = $"ETAPA {numeroNivelEscena}  |  Meta: {puntajeMetaParaCompletar} pts o {segRestantes:F0}s  (Tecla N: Pasar Nivel)";
         }
     }
 
@@ -301,35 +379,137 @@ public class GameManager : MonoBehaviour
 
     #endregion
 
-    #region Bucle de Juego (Game Loop: Perder y Reiniciar)
+    #region Victoria y Transición entre Niveles con SceneManager (Actividad 4.5)
 
     /// <summary>
-    /// Maneja el impacto con obstáculos activando el flujo de fin de partida y reinicio del Game Loop.
+    /// Se ejecuta al alcanzar la meta de puntos o tiempo del nivel actual.
+    /// Muestra el panel de Nivel Completado con opciones para avanzar al siguiente nivel o ir al Menú Principal.
     /// </summary>
-    public void RecibirImpactoObstaculo()
-    {
-        PerderJuego("Un fragmento oscuro fracturó tu Aura. Elévate de nuevo.");
-    }
-
-    /// <summary>
-    /// Ejecuta la lógica de derrota (por obstáculo, DeathPart o caída al vacío),
-    /// congela la caída del jugador e inicia el reinicio del bucle de juego (Game Loop).
-    /// </summary>
-    public void PerderJuego(string motivo = "Fin de partida")
+    public void CompletarNivelActual()
     {
         if (juegoTerminado) return;
 
         juegoTerminado = true;
+        nivelCompletado = true;
 
-        // Detener inmediatamente al jugador para que no siga acumulando velocidad de caída en el vacío
+        if (corrutinaReinicio != null)
+        {
+            StopCoroutine(corrutinaReinicio);
+            corrutinaReinicio = null;
+        }
+
         if (jugador == null) jugador = FindAnyObjectByType<PlayerController3D>();
         if (jugador != null)
         {
             jugador.DetenerPorMuerte();
         }
 
+        BotonTactil.ReiniciarEstados();
         GuardarProgresoActual();
         ActualizarTextosUI();
+
+        if (panelGameOver != null)
+        {
+            panelGameOver.SetActive(false);
+        }
+
+        if (panelNivelCompletado != null)
+        {
+            panelNivelCompletado.SetActive(true);
+        }
+
+        if (numeroNivelEscena == 1)
+        {
+            if (textoTituloNivelCompletado != null)
+                textoTituloNivelCompletado.text = "¡NIVEL 1 COMPLETADO!";
+
+            if (textoDetalleNivelCompletado != null)
+                textoDetalleNivelCompletado.text = $"¡Has despertado el poder de tu Aura!\nPuntaje obtenido: {puntajeActual}  |  Mejor Récord: {recordGuardado}";
+
+            if (textoBotonSiguienteNivel != null)
+                textoBotonSiguienteNivel.text = "SIGUIENTE NIVEL (NIVEL 2)";
+        }
+        else
+        {
+            if (textoTituloNivelCompletado != null)
+                textoTituloNivelCompletado.text = "¡NIVEL 2 COMPLETADO! ¡VICTORIA!";
+
+            if (textoDetalleNivelCompletado != null)
+                textoDetalleNivelCompletado.text = $"¡Superaste los 2 niveles consecutivos de Aura Evolution!\nPuntaje Final: {puntajeActual}  |  Mejor Récord: {recordGuardado}";
+
+            if (textoBotonSiguienteNivel != null)
+                textoBotonSiguienteNivel.text = "JUGAR DE NUEVO (NIVEL 1)";
+        }
+    }
+
+    /// <summary>
+    /// Cambia limpiamente a la escena del siguiente nivel utilizando SceneManager.LoadScene sin errores.
+    /// </summary>
+    public void CargarSiguienteNivel()
+    {
+        if (corrutinaReinicio != null)
+        {
+            StopCoroutine(corrutinaReinicio);
+            corrutinaReinicio = null;
+        }
+
+        GuardarProgresoActual();
+        BotonTactil.ReiniciarEstados();
+        Time.timeScale = 1f;
+
+        string destino = string.IsNullOrEmpty(escenaSiguienteNivel) ? "Nivel2" : escenaSiguienteNivel;
+        SceneManager.LoadScene(destino);
+    }
+
+    /// <summary>
+    /// Regresa limpiamente a la escena del Menú Principal utilizando SceneManager.LoadScene.
+    /// </summary>
+    public void IrAlMenuPrincipal()
+    {
+        if (corrutinaReinicio != null)
+        {
+            StopCoroutine(corrutinaReinicio);
+            corrutinaReinicio = null;
+        }
+
+        GuardarProgresoActual();
+        BotonTactil.ReiniciarEstados();
+        Time.timeScale = 1f;
+
+        string destinoMenu = string.IsNullOrEmpty(escenaMenuPrincipal) ? "MenuPrincipal" : escenaMenuPrincipal;
+        SceneManager.LoadScene(destinoMenu);
+    }
+
+    #endregion
+
+    #region Bucle de Juego (Game Loop: Perder y Reiniciar)
+
+    public void RecibirImpactoObstaculo()
+    {
+        PerderJuego("Un fragmento oscuro fracturó tu Aura. Elévate de nuevo.");
+    }
+
+    public void PerderJuego(string motivo = "Fin de partida")
+    {
+        if (juegoTerminado) return;
+
+        juegoTerminado = true;
+        nivelCompletado = false;
+
+        if (jugador == null) jugador = FindAnyObjectByType<PlayerController3D>();
+        if (jugador != null)
+        {
+            jugador.DetenerPorMuerte();
+        }
+
+        BotonTactil.ReiniciarEstados();
+        GuardarProgresoActual();
+        ActualizarTextosUI();
+
+        if (panelNivelCompletado != null)
+        {
+            panelNivelCompletado.SetActive(false);
+        }
 
         if (panelGameOver != null)
         {
@@ -368,10 +548,7 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Reinicia el flujo completo del juego (Game Loop):
-    /// 1. Vuelve el puntaje a 0 y la dificultad al Nivel 1.
-    /// 2. Destruye todas las plataformas existentes y genera un nivel nuevo desde la posición inicial.
-    /// 3. Teletransporta al jugador a la posición inicial segura con velocidad e inercia en cero.
+    /// Reinicia el flujo completo del nivel actual (Game Loop).
     /// </summary>
     public void ReiniciarJuego()
     {
@@ -382,6 +559,7 @@ public class GameManager : MonoBehaviour
         }
 
         GuardarProgresoActual();
+        BotonTactil.ReiniciarEstados();
         Time.timeScale = 1f;
 
         if (!reinicioEnCaliente)
@@ -397,6 +575,7 @@ public class GameManager : MonoBehaviour
         tiempoJugado = 0f;
         nivelActual = 1;
         multiplicadorDificultad = 1.0f;
+        nivelCompletado = false;
 
         // 2. Destruir todas las plataformas anteriores y generar el nivel nuevo desde la posición inicial
         if (generadorNiveles == null) generadorNiveles = FindAnyObjectByType<GeneradorNiveles>();
@@ -427,17 +606,22 @@ public class GameManager : MonoBehaviour
             camaraFollow.ReposicionarInmediato();
         }
 
-        // 5.5. Restablecer color de fondo, color del personaje e iluminación al Nivel 1
+        // 5.5. Restablecer color de fondo, color del personaje e iluminación al Nivel 1 de la escena
         if (gestorVisual == null) gestorVisual = FindAnyObjectByType<GestorVisual>();
         if (gestorVisual != null)
         {
             gestorVisual.ActualizarAspectoPorNivel(1, true);
         }
 
-        // 6. Ocultar el panel de Game Over, actualizar textos UI y reanudar el bucle de juego
+        // 6. Ocultar paneles de fin de partida, actualizar textos UI y reanudar el bucle de juego
         if (panelGameOver != null)
         {
             panelGameOver.SetActive(false);
+        }
+
+        if (panelNivelCompletado != null)
+        {
+            panelNivelCompletado.SetActive(false);
         }
 
         ActualizarTextosUI();
@@ -447,7 +631,7 @@ public class GameManager : MonoBehaviour
     #endregion
 
     /// <summary>
-    /// Garantiza que todos los elementos visuales del HUD (Texto_Record y PanelGameOver funcional)
+    /// Garantiza que todos los elementos visuales del HUD, PanelGameOver y PanelNivelCompletado
     /// estén presentes y vinculados correctamente en el Canvas.
     /// </summary>
     private void AsegurarElementosUI()
@@ -458,7 +642,7 @@ public class GameManager : MonoBehaviour
         int uiLayer = LayerMask.NameToLayer("UI");
         if (uiLayer < 0) uiLayer = 5;
 
-        // 1. Asegurar Texto_Record si no estaba vinculado en la escena
+        // 1. Asegurar Texto_Record
         if (textoRecord == null)
         {
             Transform trRecord = canvasObj.transform.Find("Texto_Record");
@@ -488,7 +672,7 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        // 1.5. Asegurar texto narrativo inspirador en la UI al empezar a jugar
+        // 1.5. Asegurar texto de etapa y meta del nivel en la UI
         Transform trNarrativa = canvasObj.transform.Find("Texto_Narrativa_Aura");
         if (trNarrativa == null)
         {
@@ -501,39 +685,48 @@ public class GameManager : MonoBehaviour
             rectN.anchorMax = new Vector2(0.5f, 1f);
             rectN.pivot = new Vector2(0.5f, 1f);
             rectN.anchoredPosition = new Vector2(0f, -68f);
-            rectN.sizeDelta = new Vector2(680f, 45f);
+            rectN.sizeDelta = new Vector2(820f, 45f);
 
             TextMeshProUGUI tmpN = objNarrativa.GetComponent<TextMeshProUGUI>();
-            tmpN.text = "Despierta tu Aura. Avanza y evoluciona.";
-            tmpN.fontSize = 21;
+            tmpN.fontSize = 20;
             tmpN.fontStyle = FontStyles.Italic;
-            tmpN.color = new Color(0.65f, 0.90f, 1f, 0.95f);
+            tmpN.color = new Color(0.75f, 0.92f, 1f, 0.95f);
             tmpN.alignment = TextAlignmentOptions.Top;
-        }
-
-        // 2. Asegurar que panelGameOver tenga interfaz gráfica real dentro del Canvas
-        bool necesitaConstruirPanel = (panelGameOver == null) ||
-                                      (panelGameOver.GetComponent<RectTransform>() == null) ||
-                                      (panelGameOver.GetComponentInChildren<TMP_Text>(true) == null);
-
-        if (necesitaConstruirPanel)
-        {
-            Transform existenteEnCanvas = canvasObj.transform.Find("Panel_GameOver_UI");
-            if (existenteEnCanvas != null)
-            {
-                panelGameOver = existenteEnCanvas.gameObject;
-                Transform det = panelGameOver.transform.Find("Texto_Detalle_GameOver");
-                if (det != null) textoDetalleGameOver = det.GetComponent<TMP_Text>();
-            }
-            else
-            {
-                ConstruirPanelGameOverUI(canvasObj.transform, uiLayer);
-            }
+            textoNarrativaProgreso = tmpN;
         }
         else
         {
+            textoNarrativaProgreso = trNarrativa.GetComponent<TMP_Text>();
+        }
+
+        // 2. Asegurar Panel de Game Over con botones de Reintentar y Menú Principal
+        Transform existenteGameOver = canvasObj.transform.Find("Panel_GameOver_UI");
+        if (existenteGameOver != null)
+        {
+            panelGameOver = existenteGameOver.gameObject;
             Transform det = panelGameOver.transform.Find("Texto_Detalle_GameOver");
             if (det != null) textoDetalleGameOver = det.GetComponent<TMP_Text>();
+        }
+        else
+        {
+            ConstruirPanelGameOverUI(canvasObj.transform, uiLayer);
+        }
+
+        // 3. Asegurar Panel de Nivel Completado (Actividad 4.5) con botones de Siguiente Nivel y Menú Principal
+        Transform existenteCompletado = canvasObj.transform.Find("Panel_NivelCompletado_UI");
+        if (existenteCompletado != null)
+        {
+            panelNivelCompletado = existenteCompletado.gameObject;
+            Transform tit = panelNivelCompletado.transform.Find("Titulo_NivelCompletado");
+            if (tit != null) textoTituloNivelCompletado = tit.GetComponent<TMP_Text>();
+            Transform det = panelNivelCompletado.transform.Find("Texto_Detalle_NivelCompletado");
+            if (det != null) textoDetalleNivelCompletado = det.GetComponent<TMP_Text>();
+            Transform btnSig = panelNivelCompletado.transform.Find("Btn_SiguienteNivel/Text");
+            if (btnSig != null) textoBotonSiguienteNivel = btnSig.GetComponent<TMP_Text>();
+        }
+        else
+        {
+            ConstruirPanelNivelCompletadoUI(canvasObj.transform, uiLayer);
         }
     }
 
@@ -548,10 +741,10 @@ public class GameManager : MonoBehaviour
         panelRect.anchorMax = new Vector2(0.5f, 0.5f);
         panelRect.pivot = new Vector2(0.5f, 0.5f);
         panelRect.anchoredPosition = Vector2.zero;
-        panelRect.sizeDelta = new Vector2(720f, 360f);
+        panelRect.sizeDelta = new Vector2(760f, 380f);
 
         Image bgImg = panelObj.GetComponent<Image>();
-        bgImg.color = new Color(0.08f, 0.09f, 0.14f, 0.92f);
+        bgImg.color = new Color(0.08f, 0.09f, 0.14f, 0.94f);
 
         // Título
         GameObject tituloObj = new GameObject("Titulo_GameOver", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -562,13 +755,13 @@ public class GameManager : MonoBehaviour
         tRect.anchorMax = new Vector2(0.5f, 1f);
         tRect.pivot = new Vector2(0.5f, 1f);
         tRect.anchoredPosition = new Vector2(0f, -25f);
-        tRect.sizeDelta = new Vector2(660f, 65f);
+        tRect.sizeDelta = new Vector2(700f, 65f);
 
         TextMeshProUGUI tmpTitulo = tituloObj.GetComponent<TextMeshProUGUI>();
         tmpTitulo.text = "¡TU AURA SE HA AGOTADO!";
         tmpTitulo.fontSize = 36;
         tmpTitulo.fontStyle = FontStyles.Bold;
-        tmpTitulo.color = new Color(1f, 0.32f, 0.32f, 1f);
+        tmpTitulo.color = new Color(1f, 0.35f, 0.35f, 1f);
         tmpTitulo.alignment = TextAlignmentOptions.Center;
 
         // Texto Detalle / Cuenta regresiva
@@ -579,31 +772,114 @@ public class GameManager : MonoBehaviour
         dRect.anchorMin = new Vector2(0.5f, 0.5f);
         dRect.anchorMax = new Vector2(0.5f, 0.5f);
         dRect.pivot = new Vector2(0.5f, 0.5f);
-        dRect.anchoredPosition = new Vector2(0f, 10f);
-        dRect.sizeDelta = new Vector2(660f, 130f);
+        dRect.anchoredPosition = new Vector2(0f, 15f);
+        dRect.sizeDelta = new Vector2(700f, 130f);
 
         textoDetalleGameOver = detalleObj.GetComponent<TextMeshProUGUI>();
         textoDetalleGameOver.text = "Reiniciando nivel...";
-        textoDetalleGameOver.fontSize = 26;
+        textoDetalleGameOver.fontSize = 25;
         textoDetalleGameOver.color = Color.white;
         textoDetalleGameOver.alignment = TextAlignmentOptions.Center;
 
         // Botón Reintentar Ahora
-        GameObject btnObj = new GameObject("Btn_Reintentar", typeof(RectTransform), typeof(Image), typeof(Button));
+        CrearBotonPanel(panelObj.transform, "Btn_Reintentar", uiLayer,
+            new Vector2(-165f, 28f), new Vector2(290f, 65f),
+            "REINTENTAR", new Color(0.18f, 0.65f, 0.35f, 0.95f), ReiniciarJuego);
+
+        // Botón Ir al Menú Principal
+        CrearBotonPanel(panelObj.transform, "Btn_MenuDesdeGameOver", uiLayer,
+            new Vector2(165f, 28f), new Vector2(290f, 65f),
+            "MENÚ PRINCIPAL", new Color(0.20f, 0.45f, 0.82f, 0.95f), IrAlMenuPrincipal);
+
+        panelGameOver = panelObj;
+    }
+
+    private void ConstruirPanelNivelCompletadoUI(Transform canvasTransform, int uiLayer)
+    {
+        GameObject panelObj = new GameObject("Panel_NivelCompletado_UI", typeof(RectTransform), typeof(Image));
+        panelObj.layer = uiLayer;
+        panelObj.transform.SetParent(canvasTransform, false);
+
+        RectTransform panelRect = panelObj.GetComponent<RectTransform>();
+        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+        panelRect.pivot = new Vector2(0.5f, 0.5f);
+        panelRect.anchoredPosition = Vector2.zero;
+        panelRect.sizeDelta = new Vector2(780f, 390f);
+
+        Image bgImg = panelObj.GetComponent<Image>();
+        bgImg.color = new Color(0.07f, 0.14f, 0.22f, 0.95f);
+
+        // Título de Victoria
+        GameObject tituloObj = new GameObject("Titulo_NivelCompletado", typeof(RectTransform), typeof(TextMeshProUGUI));
+        tituloObj.layer = uiLayer;
+        tituloObj.transform.SetParent(panelObj.transform, false);
+        RectTransform tRect = tituloObj.GetComponent<RectTransform>();
+        tRect.anchorMin = new Vector2(0.5f, 1f);
+        tRect.anchorMax = new Vector2(0.5f, 1f);
+        tRect.pivot = new Vector2(0.5f, 1f);
+        tRect.anchoredPosition = new Vector2(0f, -25f);
+        tRect.sizeDelta = new Vector2(720f, 65f);
+
+        textoTituloNivelCompletado = tituloObj.GetComponent<TextMeshProUGUI>();
+        textoTituloNivelCompletado.text = $"¡NIVEL {numeroNivelEscena} COMPLETADO!";
+        textoTituloNivelCompletado.fontSize = 36;
+        textoTituloNivelCompletado.fontStyle = FontStyles.Bold;
+        textoTituloNivelCompletado.color = new Color(1f, 0.88f, 0.28f, 1f);
+        textoTituloNivelCompletado.alignment = TextAlignmentOptions.Center;
+
+        // Texto Detalle
+        GameObject detalleObj = new GameObject("Texto_Detalle_NivelCompletado", typeof(RectTransform), typeof(TextMeshProUGUI));
+        detalleObj.layer = uiLayer;
+        detalleObj.transform.SetParent(panelObj.transform, false);
+        RectTransform dRect = detalleObj.GetComponent<RectTransform>();
+        dRect.anchorMin = new Vector2(0.5f, 0.5f);
+        dRect.anchorMax = new Vector2(0.5f, 0.5f);
+        dRect.pivot = new Vector2(0.5f, 0.5f);
+        dRect.anchoredPosition = new Vector2(0f, 15f);
+        dRect.sizeDelta = new Vector2(720f, 130f);
+
+        textoDetalleNivelCompletado = detalleObj.GetComponent<TextMeshProUGUI>();
+        textoDetalleNivelCompletado.text = "¡Meta alcanzada! Avanza al siguiente nivel.";
+        textoDetalleNivelCompletado.fontSize = 25;
+        textoDetalleNivelCompletado.color = Color.white;
+        textoDetalleNivelCompletado.alignment = TextAlignmentOptions.Center;
+
+        // Botón Siguiente Nivel
+        GameObject btnSig = CrearBotonPanel(panelObj.transform, "Btn_SiguienteNivel", uiLayer,
+            new Vector2(-175f, 28f), new Vector2(330f, 68f),
+            "SIGUIENTE NIVEL", new Color(0.16f, 0.68f, 0.38f, 0.98f), CargarSiguienteNivel);
+
+        Transform trTxtSig = btnSig.transform.Find("Text");
+        if (trTxtSig != null) textoBotonSiguienteNivel = trTxtSig.GetComponent<TMP_Text>();
+
+        // Botón Menú Principal
+        CrearBotonPanel(panelObj.transform, "Btn_MenuPrincipal", uiLayer,
+            new Vector2(185f, 28f), new Vector2(290f, 68f),
+            "MENÚ PRINCIPAL", new Color(0.20f, 0.45f, 0.82f, 0.95f), IrAlMenuPrincipal);
+
+        panelNivelCompletado = panelObj;
+    }
+
+    private GameObject CrearBotonPanel(Transform parent, string nombre, int uiLayer,
+        Vector2 anchoredPos, Vector2 sizeDelta, string texto, Color colorFondo, UnityEngine.Events.UnityAction accion)
+    {
+        GameObject btnObj = new GameObject(nombre, typeof(RectTransform), typeof(Image), typeof(Button));
         btnObj.layer = uiLayer;
-        btnObj.transform.SetParent(panelObj.transform, false);
+        btnObj.transform.SetParent(parent, false);
+
         RectTransform bRect = btnObj.GetComponent<RectTransform>();
         bRect.anchorMin = new Vector2(0.5f, 0f);
         bRect.anchorMax = new Vector2(0.5f, 0f);
         bRect.pivot = new Vector2(0.5f, 0f);
-        bRect.anchoredPosition = new Vector2(0f, 25f);
-        bRect.sizeDelta = new Vector2(280f, 65f);
+        bRect.anchoredPosition = anchoredPos;
+        bRect.sizeDelta = sizeDelta;
 
         Image btnImg = btnObj.GetComponent<Image>();
-        btnImg.color = new Color(0.18f, 0.65f, 0.35f, 0.95f);
+        btnImg.color = colorFondo;
 
         Button btn = btnObj.GetComponent<Button>();
-        btn.onClick.AddListener(ReiniciarJuego);
+        btn.onClick.AddListener(accion);
 
         GameObject btnTxtObj = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
         btnTxtObj.layer = uiLayer;
@@ -614,13 +890,13 @@ public class GameManager : MonoBehaviour
         btRect.sizeDelta = Vector2.zero;
 
         TextMeshProUGUI btnTmp = btnTxtObj.GetComponent<TextMeshProUGUI>();
-        btnTmp.text = "REINTENTAR";
-        btnTmp.fontSize = 26;
+        btnTmp.text = texto;
+        btnTmp.fontSize = 23;
         btnTmp.fontStyle = FontStyles.Bold;
         btnTmp.color = Color.white;
         btnTmp.alignment = TextAlignmentOptions.Center;
 
-        panelGameOver = panelObj;
+        return btnObj;
     }
 
     private void OnApplicationQuit()

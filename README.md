@@ -5,7 +5,7 @@ Repositorio: https://github.com/Osvaldo8005/Aura_Evolution.git
 
 ## Descripcion del juego
 
-Aura Evolution es un videojuego en 3D pensado para dispositivos moviles que estoy desarrollando en Unity. A lo largo de esta Unidad 4 fui construyendo el juego paso a paso, empezando por el movimiento tridimensional, la camara y los menus, luego sumando el sistema de puntaje, record y dificultad, y finalmente implementando la generacion procedural infinita de niveles junto con el bucle de juego (*Game Loop*).
+Aura Evolution es un videojuego en 3D pensado para dispositivos moviles que estoy desarrollando en Unity. A lo largo de esta Unidad 4 fui construyendo el juego paso a paso, empezando por el movimiento tridimensional, la camara y los menus, luego sumando el sistema de puntaje, record y dificultad, despues implementando la generacion procedural infinita de niveles junto con el bucle de juego (*Game Loop*), mejorando la iluminacion y personalizacion visual del personaje y del fondo, y finalmente cerrando con la navegacion completa entre menus y dos niveles consecutivos usando `SceneManager`.
 
 ---
 
@@ -87,14 +87,31 @@ En esta cuarta entrega trabaje en el apartado estetico y de iluminacion del jueg
 
 ---
 
+## Actividad 4.5: Interfaz y Navegacion
+
+Para esta quinta entrega complete el flujo de navegacion entre escenas y diseñe los paneles de interfaz para poder jugar a traves de dos niveles consecutivos sin errores en la consola:
+
+### Flujo de dos niveles consecutivos y condicion de victoria
+- Cree una segunda escena de juego llamada `Nivel2` (`Assets/Scenes/Nivel2.unity`) y la agregue al `EditorBuildSettings.asset` junto con `MenuPrincipal` y `SampleScene` (Nivel 1) para que `SceneManager` pueda cargar cualquiera de las tres escenas sin lanzar errores.
+- En el `GameManager.cs` programe una condicion de victoria para el Nivel 1: cuando el jugador alcanza la meta de 500 puntos (o sobrevive 35 segundos en el recorrido), el juego detiene al personaje de forma segura, guarda el record en `PlayerPrefs` y muestra en pantalla el panel de **Nivel 1 Completado**.
+- Para el `Nivel2` configure una variacion visual y de dificultad desde el inicio: empieza con una paleta de colores purpura astral, plataformas con mayor separacion, obstaculos mas rapidos y una meta superior de 800 puntos para completar el segundo nivel. Tambien agregue una estela luminosa (`TrailRenderer`) detras del caballero que cambia de color junto con su Aura mientras se desplaza.
+
+### Transicion limpia entre escenas con SceneManager e interfaces de usuario
+- Dentro del panel de **Nivel Completado** puse el boton **Siguiente Nivel**, el cual limpia los estados de entrada, asegura que el `Time.timeScale` este en `1` y ejecuta `SceneManager.LoadScene("Nivel2")` para pasar del Nivel 1 al Nivel 2 de manera limpia. Al completar el Nivel 2, el panel muestra el mensaje de victoria final y permite volver a jugar desde el Nivel 1 o regresar al menu.
+- Mejore la interfaz del `MenuPrincipal` (`MenuController.cs`) para que muestre el mejor record guardado y tenga botones directos para iniciar en el **Nivel 1**, ir al **Nivel 2** o **Salir del juego**. Ademas, tanto en el panel de **Game Over** como en el de **Nivel Completado** y en la esquina superior derecha del HUD deje botones funcionales para regresar al `MenuPrincipal` en cualquier momento.
+- Como apoyo para probar rapido la transicion sin tener que esperar toda la partida, deje configurada la tecla `N` para completar el nivel actual al instante y abrir el panel de cambio de nivel.
+
+---
+
 ## Controles para probar el proyecto
 
 **En computadora:**
 - **Moverse:** Teclas `W`, `A`, `S`, `D` o flechas del teclado.
 - **Saltar:** `Barra espaciadora`.
+- **Completar nivel actual rapido (prueba de transicion a Nivel 2):** Tecla `N`.
 - **Cambiar color de Aura y fondo manualmente (prueba rapida):** Tecla `C`.
 - **Reiniciar rapido al perder:** Tecla `R` o boton `Reintentar` en pantalla.
-- **Regresar al menu:** Clic en el boton `Menu` arriba a la derecha.
+- **Regresar al menu:** Clic en el boton `Menu` arriba a la derecha o desde los paneles de fin de nivel.
 
 **En celular (o con el mouse en pantalla):**
 - **Moverse:** Botones de direccion en la esquina inferior izquierda.
@@ -103,5 +120,6 @@ En esta cuarta entrega trabaje en el apartado estetico y de iluminacion del jueg
 
 ## Escenas del proyecto
 
-- `MenuPrincipal`: Pantalla de inicio con los botones para entrar al juego o salir de la aplicacion.
-- `SampleScene`: Escena principal donde se ejecuta el generador procedural de niveles, el gestor visual de iluminacion, el jugador, los obstaculos, los coleccionables y toda la interfaz del juego.
+- `MenuPrincipal`: Pantalla de inicio con el record guardado y botones para jugar el Nivel 1, jugar el Nivel 2 o salir de la aplicacion.
+- `SampleScene`: Escena del **Nivel 1** con meta de 500 puntos (o 35 segundos) y transicion hacia el Nivel 2 al completarse.
+- `Nivel2`: Escena del **Nivel 2** con atmosfera astral, mayor velocidad de obstaculos, mayor distancia entre plataformas y meta de 800 puntos.

@@ -230,6 +230,12 @@ public class PlayerController3D : MonoBehaviour
         {
             animator.SetBool("isWalking", false);
         }
+
+        TrailRenderer trail = GetComponentInChildren<TrailRenderer>();
+        if (trail != null)
+        {
+            trail.Clear();
+        }
     }
 
     /// <summary>
@@ -323,6 +329,12 @@ public class PlayerController3D : MonoBehaviour
         if (animator != null)
         {
             animator.SetBool("isWalking", false);
+        }
+
+        TrailRenderer trail = GetComponentInChildren<TrailRenderer>();
+        if (trail != null)
+        {
+            trail.Clear();
         }
     }
 

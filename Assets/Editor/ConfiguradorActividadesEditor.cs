@@ -12,19 +12,19 @@ using TMPro;
 /// </summary>
 public static class ConfiguradorActividadesEditor
 {
-    [MenuItem("Aura Evolution/Configurar Actividades 4.1 a 4.4 (UI, Camara, Niveles e Iluminacion)")]
+    [MenuItem("Aura Evolution/Configurar Actividades 4.1 a 4.5 (UI, Camara, Niveles, Iluminacion y Navegacion)")]
     public static void ConfigurarTodo()
     {
         Scene scene = SceneManager.GetActiveScene();
-        if (!scene.IsValid() || scene.name != "SampleScene")
+        if (!scene.IsValid() || (scene.name != "SampleScene" && scene.name != "Nivel2"))
         {
-            EditorUtility.DisplayDialog("Aviso", "Por favor, abre la escena 'SampleScene' antes de ejecutar esta configuración.", "Entendido");
+            EditorUtility.DisplayDialog("Aviso", "Por favor, abre la escena 'SampleScene' o 'Nivel2' antes de ejecutar esta configuración.", "Entendido");
             return;
         }
 
         Undo.IncrementCurrentGroup();
         int groupIndex = Undo.GetCurrentGroup();
-        Undo.SetCurrentGroupName("Configurar Actividades 4.1 - 4.4");
+        Undo.SetCurrentGroupName("Configurar Actividades 4.1 - 4.5");
 
         int uiLayer = LayerMask.NameToLayer("UI");
 

@@ -107,4 +107,16 @@ public class BotonTactil : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
         }
         return false;
     }
+
+    public static void ReiniciarEstados()
+    {
+        saltoSolicitado = false;
+        for (int i = 0; i < botonesActivos.Count; i++)
+        {
+            if (botonesActivos[i] != null)
+            {
+                botonesActivos[i].Presionado = false;
+            }
+        }
+    }
 }

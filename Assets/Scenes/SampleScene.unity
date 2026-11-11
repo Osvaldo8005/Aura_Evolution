@@ -4573,6 +4573,13 @@ MonoBehaviour:
   textoRecord: {fileID: 0}
   textoDificultad: {fileID: 316521140}
   panelGameOver: {fileID: 29525585}
+  panelNivelCompletado: {fileID: 0}
+  numeroNivelEscena: 1
+  puntajeMetaParaCompletar: 500
+  tiempoMetaSegundos: 35
+  escenaSiguienteNivel: Nivel2
+  escenaMenuPrincipal: MenuPrincipal
+  teclaCompletarNivelRapido: 110
   puntosPorSegundo: 10
   puntosPorMetro: 5
   tiempoPorNivelDificultad: 12
