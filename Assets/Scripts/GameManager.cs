@@ -76,6 +76,7 @@ public class GameManager : MonoBehaviour
     private PlayerController3D jugador;
     private GeneradorObstaculos spawner;
     private GeneradorNiveles generadorNiveles;
+    private GestorVisual gestorVisual;
     private CameraFollow3D camaraFollow;
     private TMP_Text textoDetalleGameOver;
     private Coroutine corrutinaReinicio;
@@ -113,6 +114,14 @@ public class GameManager : MonoBehaviour
         {
             GameObject genObj = new GameObject("GeneradorNiveles");
             generadorNiveles = genObj.AddComponent<GeneradorNiveles>();
+        }
+
+        // Garantizar que el Gestor Visual (Actividad 4.4: fondo, color del personaje e iluminación) exista en la escena
+        gestorVisual = FindAnyObjectByType<GestorVisual>();
+        if (gestorVisual == null)
+        {
+            GameObject gvObj = new GameObject("GestorVisual");
+            gestorVisual = gvObj.AddComponent<GestorVisual>();
         }
 
         AsegurarElementosUI();
@@ -215,6 +224,12 @@ public class GameManager : MonoBehaviour
         if (generadorNiveles != null)
         {
             generadorNiveles.ActualizarDificultad(nivelActual, multiplicadorDificultad);
+        }
+
+        if (gestorVisual == null) gestorVisual = FindAnyObjectByType<GestorVisual>();
+        if (gestorVisual != null)
+        {
+            gestorVisual.ActualizarAspectoPorNivel(nivelActual, false);
         }
     }
 
@@ -410,6 +425,13 @@ public class GameManager : MonoBehaviour
         if (camaraFollow != null)
         {
             camaraFollow.ReposicionarInmediato();
+        }
+
+        // 5.5. Restablecer color de fondo, color del personaje e iluminación al Nivel 1
+        if (gestorVisual == null) gestorVisual = FindAnyObjectByType<GestorVisual>();
+        if (gestorVisual != null)
+        {
+            gestorVisual.ActualizarAspectoPorNivel(1, true);
         }
 
         // 6. Ocultar el panel de Game Over, actualizar textos UI y reanudar el bucle de juego

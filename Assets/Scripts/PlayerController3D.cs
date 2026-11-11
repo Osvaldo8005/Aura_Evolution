@@ -34,6 +34,18 @@ public class PlayerController3D : MonoBehaviour
     [Tooltip("Altura Y por debajo de la cual se considera caída al vacío y se reinicia el Game Loop")]
     public float alturaCaidaMuerte = -4.5f;
 
+    [Header("Personalización Visual del Personaje (Actividad 4.4)")]
+    [Tooltip("Color actual del Aura y del material del caballero")]
+    public Color colorPersonaje = new Color(0.92f, 0.96f, 1.00f, 1f);
+
+    [Tooltip("Propiedad visual de acabado metálico de la armadura")]
+    [Range(0f, 1f)]
+    public float acabadoMetalico = 0.15f;
+
+    [Tooltip("Propiedad visual de suavidad y brillo del material")]
+    [Range(0f, 1f)]
+    public float suavidadBrillo = 0.25f;
+
     [Header("Estado")]
     [SerializeField] private bool enElSuelo = true;
 
@@ -231,6 +243,35 @@ public class PlayerController3D : MonoBehaviour
     public float ObtenerVelocidadActual()
     {
         return velocidad;
+    }
+
+    /// <summary>
+    /// Permite alterar y personalizar el color y las propiedades visuales del material del personaje principal (Actividad 4.4).
+    /// </summary>
+    public void CambiarColorYPropiedadesPersonaje(Color nuevoColor, float metalico, float suavidad)
+    {
+        colorPersonaje = nuevoColor;
+        acabadoMetalico = metalico;
+        suavidadBrillo = suavidad;
+
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] == null || !renderers[i].enabled) continue;
+
+            Material mat = renderers[i].material;
+            if (mat == null) continue;
+
+            mat.color = nuevoColor;
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", nuevoColor);
+            if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", metalico);
+            if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", suavidad);
+            if (mat.HasProperty("_EmissionColor"))
+            {
+                mat.SetColor("_EmissionColor", Color.black);
+                mat.DisableKeyword("_EMISSION");
+            }
+        }
     }
 
     /// <summary>

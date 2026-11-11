@@ -67,11 +67,32 @@ Para esta entrega desarrolle la mecanica de generacion dinamica de niveles en ti
 
 ---
 
+## Actividad 4.4: Iluminacion y Mejoras Visuales
+
+En esta cuarta entrega trabaje en el apartado estetico y de iluminacion del juego para que el escenario en 3D y el personaje principal tuvieran una mejor presentacion visual y cambiaran de forma dinamica durante la partida:
+
+### Cambio dinamico del color de fondo del entorno
+- Programe el script `GestorVisual.cs` y lo conecte directamente con el `GameManager.cs`. Configure la camara principal (`Main Camera`) en modo `SolidColor` para poder controlar el color de fondo por codigo.
+- Defini un arreglo de colores en el Inspector (`coloresFondoPorNivel`) para que cada vez que el jugador sube de nivel de dificultad, el fondo del escenario cambie suavemente usando `Color.Lerp` (pasando por tonos azul acero, cian oceanico, verde esmeralda, ambar, purpura y carmesi). Cuando el jugador pierde y se reinicia el bucle de juego, el fondo regresa al color del Nivel 1.
+- Como mejora visual adicional, active una niebla lineal (`RenderSettings.fog` en modo `Linear`) que inicia a 38 metros de distancia y toma el mismo color del fondo en tiempo real. Asi las plataformas lejanas se difuminan suavemente con el horizonte sin empañar ni restarle nitidez al personaje principal.
+
+### Personalizacion del color y propiedades visuales del personaje principal
+- Dentro de `GestorVisual.cs` y `PlayerController3D.cs` agregue las funciones para modificar en tiempo de ejecucion el material del caballero (`New Material.mat`) a traves de su `Renderer`.
+- Conforme avanza el nivel de dificultad, el Aura del caballero evoluciona cambiando el tinte de su material (`_BaseColor`) y ajustando de forma moderada las propiedades visuales de su armadura (`_Metallic` en `0.15` y `_Smoothness` en `0.25`), desactivando la emision plana para que no se queme la textura original y siempre conserve sus detalles y colores reales.
+- Ademas agregue una luz puntual suave (`Luz_Aura_Caballero`) con baja intensidad (`0.32`) adherida al personaje que cambia al mismo color de su Aura sin sobreexponerlo, y deje configurada la tecla `C` para poder alternar y probar manualmente los diferentes colores del personaje y del fondo en cualquier momento.
+
+### Gestion de iluminacion direccional, ambiental y Global Volume
+- Ajuste la `Directional Light` de la escena con una rotacion e inclinacion adecuadas (`45, -35, 0`), un tono calido neutro, intensidad balanceada (`1.05`) y sombras suaves (`Soft Shadows`) para darle buen volumen a las plataformas y al caballero.
+- Configure los parametros ambientales de `RenderSettings` en modo `Trilight` con una intensidad controlada (`0.75`) y ajuste la exposicion, el contraste y el `Bloom` en el `Global Volume` de URP (`SampleSceneProfile.asset`) para que el caballero se vea nitido y con buen contraste tanto en fondos oscuros como claros.
+
+---
+
 ## Controles para probar el proyecto
 
 **En computadora:**
 - **Moverse:** Teclas `W`, `A`, `S`, `D` o flechas del teclado.
 - **Saltar:** `Barra espaciadora`.
+- **Cambiar color de Aura y fondo manualmente (prueba rapida):** Tecla `C`.
 - **Reiniciar rapido al perder:** Tecla `R` o boton `Reintentar` en pantalla.
 - **Regresar al menu:** Clic en el boton `Menu` arriba a la derecha.
 
@@ -83,4 +104,4 @@ Para esta entrega desarrolle la mecanica de generacion dinamica de niveles en ti
 ## Escenas del proyecto
 
 - `MenuPrincipal`: Pantalla de inicio con los botones para entrar al juego o salir de la aplicacion.
-- `SampleScene`: Escena principal donde se ejecuta el generador procedural de niveles, el jugador, los obstaculos, los coleccionables y toda la interfaz del juego.
+- `SampleScene`: Escena principal donde se ejecuta el generador procedural de niveles, el gestor visual de iluminacion, el jugador, los obstaculos, los coleccionables y toda la interfaz del juego.

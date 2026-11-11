@@ -12,7 +12,7 @@ using TMPro;
 /// </summary>
 public static class ConfiguradorActividadesEditor
 {
-    [MenuItem("Aura Evolution/Configurar Actividades 4.1, 4.2 y 4.3 (UI, Camara, GameManager, Niveles)")]
+    [MenuItem("Aura Evolution/Configurar Actividades 4.1 a 4.4 (UI, Camara, Niveles e Iluminacion)")]
     public static void ConfigurarTodo()
     {
         Scene scene = SceneManager.GetActiveScene();
@@ -24,7 +24,7 @@ public static class ConfiguradorActividadesEditor
 
         Undo.IncrementCurrentGroup();
         int groupIndex = Undo.GetCurrentGroup();
-        Undo.SetCurrentGroupName("Configurar Actividades 4.1 - 4.3");
+        Undo.SetCurrentGroupName("Configurar Actividades 4.1 - 4.4");
 
         int uiLayer = LayerMask.NameToLayer("UI");
 
@@ -34,6 +34,7 @@ public static class ConfiguradorActividadesEditor
         LimpiarObjetoSiExiste("GameManager");
         LimpiarObjetoSiExiste("GeneradorObstaculos");
         LimpiarObjetoSiExiste("GeneradorNiveles");
+        LimpiarObjetoSiExiste("GestorVisual");
 
         // 2. Configurar Jugador
         GameObject jugador = GameObject.Find("Jugador");
@@ -138,6 +139,34 @@ public static class ConfiguradorActividadesEditor
         }
         EditorUtility.SetDirty(genNiveles);
 
+        // 10.8. Configurar Gestor Visual e Iluminación (Actividad 4.4)
+        GameObject gestorVisualObj = new GameObject("GestorVisual");
+        Undo.RegisterCreatedObjectUndo(gestorVisualObj, "Crear GestorVisual");
+        GestorVisual gv = gestorVisualObj.AddComponent<GestorVisual>();
+        gv.camaraPrincipal = cam;
+        if (jugador != null) gv.jugador = jugador.transform;
+        Light[] luces = Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
+        foreach (Light l in luces)
+        {
+            if (l.type == LightType.Directional)
+            {
+                gv.luzDireccional = l;
+                l.transform.rotation = Quaternion.Euler(45f, -35f, 0f);
+                l.intensity = 1.05f;
+                l.color = new Color(0.98f, 0.95f, 0.90f, 1f);
+                l.shadows = LightShadows.Soft;
+                EditorUtility.SetDirty(l);
+                break;
+            }
+        }
+        if (cam != null)
+        {
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.14f, 0.21f, 0.34f, 1f);
+            EditorUtility.SetDirty(cam);
+        }
+        EditorUtility.SetDirty(gv);
+
         // 11. Conectar botones táctiles al personaje
         if (pc != null)
         {
@@ -151,12 +180,12 @@ public static class ConfiguradorActividadesEditor
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
 
-        EditorUtility.DisplayDialog("Actividades 4.1, 4.2 y 4.3 Configuradas",
-            "¡Interfaz, Niveles Procedurales y Game Loop configurados al 100%!\n\n" +
+        EditorUtility.DisplayDialog("Actividades 4.1 a 4.4 Configuradas",
+            "¡Interfaz, Niveles Procedurales, Game Loop e Iluminación (4.4) configurados al 100%!\n\n" +
+            "✔ GestorVisual configurado para cambiar color de fondo y Aura del personaje dinámicamente.\n" +
+            "✔ Directional Light e iluminación ambiental ajustadas.\n" +
             "✔ GeneradorNiveles procedural e infinito listo en el Inspector.\n" +
-            "✔ Bucle de Juego (Game Loop) con reinicio automático al perder.\n" +
-            "✔ Curva de dificultad progresiva conectada a plataformas y obstáculos.\n" +
-            "✔ Controles táctiles móviles y textos de Puntaje, Récord y Dificultad vinculados.\n\n" +
+            "✔ Bucle de Juego (Game Loop) con reinicio automático al perder.\n\n" +
             "La escena ha sido guardada automáticamente.",
             "¡Listo!");
     }
