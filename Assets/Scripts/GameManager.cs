@@ -215,6 +215,10 @@ public class GameManager : MonoBehaviour
         if (nuevoPuntajeEntero != puntajeActual)
         {
             puntajeActual = nuevoPuntajeEntero;
+            if (jugador != null)
+            {
+                jugador.ActualizarVelocidadPorPuntos(puntajeActual);
+            }
             VerificarYGuardarRecord();
         }
 
@@ -252,6 +256,10 @@ public class GameManager : MonoBehaviour
 
         puntajeAcumuladoFloat += cantidad;
         puntajeActual = Mathf.FloorToInt(puntajeAcumuladoFloat);
+        if (jugador != null)
+        {
+            jugador.ActualizarVelocidadPorPuntos(puntajeActual);
+        }
         VerificarYGuardarRecord();
         ActualizarTextosUI();
 
@@ -328,13 +336,29 @@ public class GameManager : MonoBehaviour
         if (textoDificultad != null)
         {
             float velActual = (jugador != null) ? jugador.ObtenerVelocidadActual() : 8f;
-            textoDificultad.text = $"Nivel {numeroNivelEscena} - Dif. {nivelActual} (Vel: {velActual:F1})";
+            if (jugador != null && jugador.PotenciadorActivo)
+            {
+                textoDificultad.text = $"Nivel {numeroNivelEscena} - Dif. {nivelActual} (Vel: {velActual:F1} | BOOST x{jugador.MultiplicadorBoostActual:F0}: {jugador.TiempoRestanteBoost:F1}s)";
+            }
+            else
+            {
+                textoDificultad.text = $"Nivel {numeroNivelEscena} - Dif. {nivelActual} (Vel: {velActual:F1})";
+            }
         }
 
         if (textoNarrativaProgreso != null)
         {
             float segRestantes = Mathf.Max(0f, tiempoMetaSegundos - tiempoJugado);
-            textoNarrativaProgreso.text = $"ETAPA {numeroNivelEscena}  |  Meta: {puntajeMetaParaCompletar} pts o {segRestantes:F0}s  (Tecla N: Pasar Nivel)";
+            if (jugador != null && jugador.PotenciadorActivo)
+            {
+                textoNarrativaProgreso.color = new Color(1f, 0.92f, 0.15f, 1f);
+                textoNarrativaProgreso.text = $"POTENCIADOR DE VELOCIDAD ACTIVO (x{jugador.MultiplicadorBoostActual:F0}) - Restan: {jugador.TiempoRestanteBoost:F1}s / 3.0s";
+            }
+            else
+            {
+                textoNarrativaProgreso.color = new Color(0.75f, 0.92f, 1f, 0.95f);
+                textoNarrativaProgreso.text = $"ETAPA {numeroNivelEscena}  |  Meta: {puntajeMetaParaCompletar} pts o {segRestantes:F0}s  (Tecla N: Pasar Nivel)";
+            }
         }
     }
 

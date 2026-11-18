@@ -107,6 +107,21 @@ public class GeneradorNiveles : MonoBehaviour
     [Tooltip("Puntos otorgados por cada moneda recolectada")]
     public int puntosPorMoneda = 100;
 
+    [Header("7. Potenciador de Velocidad (Speed Boost - Actividad 4.6)")]
+    [Tooltip("Probabilidad de que aparezca un cubo amarillo potenciador de velocidad en cada módulo de todos los niveles")]
+    [Range(0f, 1f)]
+    public float probabilidadPotenciadorVelocidad = 0.90f;
+
+    [Tooltip("Multiplicador de velocidad al recoger el cubo amarillo (por defecto x3)")]
+    public float multiplicadorPotenciador = 3f;
+
+    [Tooltip("Duración del efecto de velocidad en segundos (máximo 3 segundos)")]
+    [Range(0.5f, 3f)]
+    public float duracionPotenciador = 3f;
+
+    [Tooltip("Color amarillo del cubo potenciador de velocidad")]
+    public Color colorCuboPotenciador = new Color(1f, 0.92f, 0.04f, 1f);
+
     [Header("Estado en Tiempo de Ejecución (Solo Lectura)")]
     [SerializeField] private int totalModulosGenerados = 0;
     [SerializeField] private float distanciaActualEntrePlataformas;
@@ -119,10 +134,32 @@ public class GeneradorNiveles : MonoBehaviour
     private float ultimaAlturaY = 0f;
     private int nivelDificultadActual = 1;
     private float multiplicadorDificultadActual = 1f;
+    private int modulosSinPotenciador = 0;
 
     private void Awake()
     {
         Instance = this;
+        ValidarParametrosPotenciador();
+    }
+
+    private void ValidarParametrosPotenciador()
+    {
+        if (probabilidadPotenciadorVelocidad < 0.5f)
+        {
+            probabilidadPotenciadorVelocidad = 0.90f;
+        }
+        if (multiplicadorPotenciador < 1.5f)
+        {
+            multiplicadorPotenciador = 3f;
+        }
+        if (duracionPotenciador <= 0.1f || duracionPotenciador > 3f)
+        {
+            duracionPotenciador = 3f;
+        }
+        if (colorCuboPotenciador.a < 0.5f || (colorCuboPotenciador.r < 0.5f && colorCuboPotenciador.g < 0.5f))
+        {
+            colorCuboPotenciador = new Color(1f, 0.92f, 0.04f, 1f);
+        }
     }
 
     private void OnDestroy()
@@ -250,7 +287,9 @@ public class GeneradorNiveles : MonoBehaviour
         }
 
         // 2. Reiniciar coordenadas de generación exactamente al punto de partida
+        ValidarParametrosPotenciador();
         totalModulosGenerados = 0;
+        modulosSinPotenciador = 0;
         siguientePosicionZ = -6f;
         ultimaPosicionX = 0f;
         ultimaAlturaY = 0f;
@@ -337,6 +376,24 @@ public class GeneradorNiveles : MonoBehaviour
             colorPlataformaImpar,
             colorZonaPeligro
         );
+
+        // Generar el cubo amarillo Potenciador de Velocidad (Actividad 4.6) en todos los niveles del juego
+        // Se asegura en las primeras plataformas de cada nivel y de forma constante en las siguientes secciones
+        bool generarPotenciador = (indice <= 1) || (modulosSinPotenciador >= 1) || (Random.value <= probabilidadPotenciadorVelocidad);
+        if (generarPotenciador)
+        {
+            modulosSinPotenciador = 0;
+            modulo.GenerarPotenciadorVelocidadModulo(
+                multiplicadorPotenciador,
+                Mathf.Clamp(duracionPotenciador, 0.5f, 3f),
+                colorCuboPotenciador,
+                materialPlataforma
+            );
+        }
+        else
+        {
+            modulosSinPotenciador++;
+        }
 
         modulosActivos.Add(modulo);
         totalModulosGenerados++;

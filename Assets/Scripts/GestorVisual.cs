@@ -69,8 +69,8 @@ public class GestorVisual : MonoBehaviour
     [Range(0f, 1.2f)]
     public float intensidadLuzAura = 0.32f;
 
-    [Tooltip("Activar estela luminosa de movimiento (TrailRenderer) detrás del caballero (Actividad 4.5)")]
-    public bool activarEstelaAura = true;
+    [Tooltip("La estela (TrailRenderer) ahora es controlada por el Potenciador de Velocidad de 3s en PlayerController3D (Actividad 4.6)")]
+    public bool activarEstelaAura = false;
 
     [Tooltip("Tecla opcional para cambiar y personalizar manualmente el color del personaje y fondo en cualquier momento")]
     public KeyCode teclaCambiarAspectoManual = KeyCode.C;
@@ -371,37 +371,6 @@ public class GestorVisual : MonoBehaviour
         luzAuraPunto.intensity = intensidadLuzAura;
         luzAuraPunto.shadows = LightShadows.None;
         luzAuraPunto.enabled = activarLuzDeAuraEnPersonaje;
-
-        // Configurar estela de movimiento (TrailRenderer) detrás del caballero
-        if (activarEstelaAura)
-        {
-            Transform trEstela = jugador.Find("Estela_Aura_Trail");
-            if (trEstela == null)
-            {
-                GameObject objEstela = new GameObject("Estela_Aura_Trail");
-                objEstela.transform.SetParent(jugador, false);
-                objEstela.transform.localPosition = new Vector3(0f, -0.15f, -0.08f);
-                estelaAura = objEstela.AddComponent<TrailRenderer>();
-            }
-            else
-            {
-                estelaAura = trEstela.GetComponent<TrailRenderer>();
-                if (estelaAura == null) estelaAura = trEstela.gameObject.AddComponent<TrailRenderer>();
-            }
-
-            estelaAura.time = 0.38f;
-            estelaAura.startWidth = 0.45f;
-            estelaAura.endWidth = 0.0f;
-            estelaAura.minVertexDistance = 0.1f;
-            estelaAura.shadowCastingMode = ShadowCastingMode.Off;
-            estelaAura.receiveShadows = false;
-
-            Shader shaderSprites = Shader.Find("Sprites/Default");
-            if (shaderSprites != null && estelaAura.sharedMaterial == null)
-            {
-                estelaAura.material = new Material(shaderSprites);
-            }
-        }
     }
 
     /// <summary>
@@ -520,15 +489,6 @@ public class GestorVisual : MonoBehaviour
             luzAuraPunto.enabled = activarLuzDeAuraEnPersonaje;
             luzAuraPunto.color = colorAura;
             luzAuraPunto.intensity = intensidadLuzAura;
-        }
-
-        if (estelaAura != null)
-        {
-            estelaAura.enabled = activarEstelaAura;
-            Color inicioEstela = new Color(colorAura.r, colorAura.g, colorAura.b, 0.65f);
-            Color finEstela = new Color(colorAura.r, colorAura.g, colorAura.b, 0.0f);
-            estelaAura.startColor = inicioEstela;
-            estelaAura.endColor = finEstela;
         }
     }
 

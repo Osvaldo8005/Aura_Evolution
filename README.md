@@ -123,3 +123,23 @@ Para esta quinta entrega complete el flujo de navegacion entre escenas y diseñe
 - `MenuPrincipal`: Pantalla de inicio con el record guardado y botones para jugar el Nivel 1, jugar el Nivel 2 o salir de la aplicacion.
 - `SampleScene`: Escena del **Nivel 1** con meta de 500 puntos (o 35 segundos) y transicion hacia el Nivel 2 al completarse.
 - `Nivel2`: Escena del **Nivel 2** con atmosfera astral, mayor velocidad de obstaculos, mayor distancia entre plataformas y meta de 800 puntos.
+
+---
+
+## Actividad 4.6: Potenciador de Velocidad y Trail Renderer
+
+En esta sexta entrega implemente un evento interactivo dentro del escenario para modificar temporalmente la velocidad del personaje y mostrar el efecto visualmente con una estela:
+
+### Programacion del cubo amarillo (Potenciador de Velocidad)
+- Cree el script `PotenciadorVelocidad.cs` y lo conecte con `GeneradorNiveles.cs` y `ModuloNivel.cs` para que en las plataformas generadas proceduralmente aparezca de vez en cuando un cubo amarillo que gira y flota suavemente (ademas deje asegurado que aparezca uno en la segunda plataforma para poder probarlo luego luego al empezar, verificando antes que su posicion no se encime con las zonas rojas de peligro ni con las monedas).
+- Al cubo le configure su `BoxCollider` en modo `isTrigger = true`. Dentro de `OnTriggerEnter` (y `OnCollisionEnter` por respaldo), verifico si el objeto que lo toco es el jugador revisando su componente `PlayerController3D` o el tag `Player`. Cuando el jugador lo toca, el cubo genera un pequeño destello de particulas amarillas, manda a llamar la funcion `ActivarPotenciadorVelocidad` del personaje y enseguida se destruye con `Destroy(gameObject)`.
+- Como detalle adicional, en el `GameManager.cs` y `PlayerController3D.cs` tambien agregue que cada 100 puntos la velocidad base suba un poquito (`+0.25`), pero manteniendo el multiplicador `x3` del cubo amarillo como el cambio de velocidad principal.
+
+### Activacion de la estela con TrailRenderer y feedback visual
+- En `PlayerController3D.cs` configure un componente `TrailRenderer` (`Estela_Aura_Trail`) con una curva de grosor y un gradiente de tres colores (amarillo brillante, naranja y dorado transparente) para que resalte bastante en pantalla.
+- Al iniciar la partida o mientras el personaje camina a velocidad normal, mantengo el `TrailRenderer` apagado (`emitting = false` y `enabled = false`) para que no dibuje nada. En cuanto el jugador recoge el cubo amarillo y su velocidad se multiplica por 3, limpio cualquier rastro anterior con `Clear()`, activo `enabled = true` y `emitting = true`, acelero la animacion de correr del caballero (`animator.speed = 1.8f`) y abro ligeramente el campo de vision (`fieldOfView`) de la camara en `CameraFollow3D.cs` para que se sienta mas el impulso de velocidad.
+
+### Control del tiempo maximo de 3 segundos con corrutina
+- Para controlar la duracion exacta del efecto use una corrutina (`CorrutinaPotenciadorVelocidad`) en `PlayerController3D.cs` y limite el valor con `Mathf.Clamp(duracion, 0.5f, 3f)` y `[Range(0.5f, 3f)]` para asegurarme de que nunca dure mas de 3 segundos.
+- Dentro de la corrutina aplico el multiplicador de velocidad (`x3`), enciendo el `TrailRenderer` y llevo una cuenta regresiva segundo a segundo desde `3.0s` hasta `0.0s` que tambien muestro arriba en la interfaz del juego (`GameManager.cs`). En cuanto se cumplen los 3 segundos, la corrutina regresa la velocidad y la animacion del jugador a su valor normal y apaga por completo el `TrailRenderer`. Si el jugador toca otro cubo antes de que termine el tiempo, detengo la corrutina anterior con `StopCoroutine` y reinicio la cuenta en 3 segundos para que nunca pase de ese limite.
+

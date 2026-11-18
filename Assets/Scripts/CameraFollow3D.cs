@@ -37,8 +37,24 @@ public class CameraFollow3D : MonoBehaviour
     [Tooltip("Punto de enfoque sobre el personaje (pecho / cabeza)")]
     public Vector3 offsetMira = new Vector3(0f, 1.2f, 0f);
 
+    [Header("Efecto de Cámara en Speed Boost (Actividad 4.6)")]
+    [Tooltip("Campo de visión (FOV) normal de la cámara")]
+    public float fovNormal = 60f;
+
+    [Tooltip("Campo de visión (FOV) ampliado durante los 3s del Potenciador de Velocidad")]
+    public float fovPotenciador = 70f;
+
+    private Camera cam;
+    private PlayerController3D jugadorScript;
+
     private void Start()
     {
+        cam = GetComponent<Camera>();
+        if (cam != null && cam.fieldOfView > 30f)
+        {
+            fovNormal = cam.fieldOfView;
+        }
+
         if (objetivo == null)
         {
             GameObject jugador = GameObject.FindWithTag("Player");
@@ -46,6 +62,11 @@ public class CameraFollow3D : MonoBehaviour
             {
                 objetivo = jugador.transform;
             }
+        }
+
+        if (objetivo != null)
+        {
+            jugadorScript = objetivo.GetComponent<PlayerController3D>();
         }
 
         if (fijarZMundial && posicionZMundial == 0f)
@@ -57,6 +78,9 @@ public class CameraFollow3D : MonoBehaviour
     private void LateUpdate()
     {
         if (objetivo == null) return;
+        if (jugadorScript == null) jugadorScript = objetivo.GetComponent<PlayerController3D>();
+
+        bool enBoost = (jugadorScript != null && jugadorScript.PotenciadorActivo);
 
         // 1. Cálculo de coordenadas deseadas según los criterios de evaluación:
         
@@ -71,17 +95,25 @@ public class CameraFollow3D : MonoBehaviour
 
         Vector3 posicionDeseada = new Vector3(destinoX, destinoY, destinoZ);
 
-        // 2. Interpolación para un seguimiento suave y estable
-        if (suavidad > 0f)
+        // 2. Interpolación para un seguimiento suave y estable (más ágil durante el Speed Boost x3)
+        float suavidadEfectiva = enBoost ? Mathf.Max(suavidad * 2f, 16f) : suavidad;
+        if (suavidadEfectiva > 0f)
         {
-            transform.position = Vector3.Lerp(transform.position, posicionDeseada, suavidad * Time.deltaTime);
+            transform.position = Vector3.Lerp(transform.position, posicionDeseada, suavidadEfectiva * Time.deltaTime);
         }
         else
         {
             transform.position = posicionDeseada;
         }
 
-        // 3. Orientación hacia el personaje
+        // 3. Efecto dinámico de Field of View (FOV) durante los 3 segundos del Potenciador de Velocidad
+        if (cam != null)
+        {
+            float fovObjetivo = enBoost ? fovPotenciador : fovNormal;
+            cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, fovObjetivo, 6f * Time.deltaTime);
+        }
+
+        // 4. Orientación hacia el personaje
         Vector3 puntoAMirar = new Vector3(objetivo.position.x + offsetMira.x, objetivo.position.y + offsetMira.y, objetivo.position.z + offsetMira.z);
         transform.LookAt(puntoAMirar);
     }

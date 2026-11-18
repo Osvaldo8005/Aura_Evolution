@@ -1,10 +1,13 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
-/// Controlador tridimensional del jugador (Actividades 4.1, 4.2 y 4.3):
+/// Controlador tridimensional del jugador (Actividades 4.1 a 4.6):
 /// - Control mediante interfaz táctil móvil (BotonTactil) y teclado (PC).
 /// - Desplazamiento real en los 3 ejes tridimensionales (X, Y, Z).
 /// - Integrado con la Curva de Dificultad Progresiva y el Bucle de Juego (Game Loop) al caer o colisionar.
+/// - Incluye el efecto de Potenciador de Velocidad (Speed Boost) con TrailRenderer y duración máxima de 3 segundos.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(Collider))]
@@ -17,11 +20,25 @@ public class PlayerController3D : MonoBehaviour
     [Tooltip("Velocidad base sobre la que se aplica la curva de dificultad")]
     public float velocidadBase = 8f;
 
-    [Tooltip("Velocidad máxima permitida al escalar la dificultad")]
+    [Tooltip("Velocidad máxima permitida al escalar la dificultad normal")]
     public float velocidadMaxima = 14.5f;
 
     [Tooltip("Velocidad de rotación al girar hacia la dirección de movimiento")]
     public float velocidadGiro = 12f;
+
+    [Header("Potenciador de Velocidad y TrailRenderer (Actividad 4.6)")]
+    [Tooltip("TrailRenderer que se enciende únicamente cuando el potenciador de velocidad está activo")]
+    public TrailRenderer estelaVelocidad;
+
+    [Tooltip("Multiplicador de velocidad al tocar el cubo amarillo (por defecto x3)")]
+    public float multiplicadorPotenciador = 3f;
+
+    [Tooltip("Duración máxima del potenciador en segundos (no debe superar los 3 segundos)")]
+    [Range(0.5f, 3f)]
+    public float duracionPotenciador = 3f;
+
+    [Tooltip("Incremento pequeño de velocidad base cada 100 puntos (el cubo x3 sigue siendo el protagonista)")]
+    public float incrementoCada100Puntos = 0.25f;
 
     [Header("Parámetros de Salto (Eje Y)")]
     [Tooltip("Fuerza del impulso vertical en el eje Y para superar huecos y obstáculos")]
@@ -48,12 +65,24 @@ public class PlayerController3D : MonoBehaviour
 
     [Header("Estado")]
     [SerializeField] private bool enElSuelo = true;
+    [SerializeField] private bool potenciadorActivo = false;
+    [SerializeField] private float tiempoRestanteBoost = 0f;
+
+    public bool PotenciadorActivo => potenciadorActivo;
+    public float TiempoRestanteBoost => tiempoRestanteBoost;
+    public float MultiplicadorBoostActual => multiplicadorBoostActual;
 
     private Rigidbody rb;
     private Animator animator;
     private Vector3 posicionAnterior;
     private Quaternion rotacionInicial;
     private float tiempoProteccionReinicio = 0f;
+
+    private float velocidadBaseInicial = 8f;
+    private float multiplicadorDificultadActual = 1f;
+    private float bonoVelocidadPorPuntos = 0f;
+    private float multiplicadorBoostActual = 1f;
+    private Coroutine corrutinaPotenciador;
 
     void Awake()
     {
@@ -71,6 +100,7 @@ public class PlayerController3D : MonoBehaviour
         if (velocidad < 7f) velocidad = 8f;
         if (fuerzaSalto < 7.5f) fuerzaSalto = 8.5f;
         velocidadBase = velocidad;
+        velocidadBaseInicial = velocidadBase;
 
         // Ajustar el BoxCollider al cuerpo real del caballero si tiene el tamaño de cubo por defecto
         BoxCollider box = GetComponent<BoxCollider>();
@@ -85,6 +115,9 @@ public class PlayerController3D : MonoBehaviour
             rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
             rb.interpolation = RigidbodyInterpolation.Interpolate;
         }
+
+        ConfigurarEstelaVelocidad();
+        ApagarEstelaVelocidad();
 
         // Colocar en la posición inicial segura al arrancar
         ReiniciarJugador();
@@ -231,11 +264,7 @@ public class PlayerController3D : MonoBehaviour
             animator.SetBool("isWalking", false);
         }
 
-        TrailRenderer trail = GetComponentInChildren<TrailRenderer>();
-        if (trail != null)
-        {
-            trail.Clear();
-        }
+        CancelarPotenciadorVelocidad();
     }
 
     /// <summary>
@@ -243,7 +272,201 @@ public class PlayerController3D : MonoBehaviour
     /// </summary>
     public void ModificarVelocidadPorDificultad(float multiplicador)
     {
-        velocidad = Mathf.Min(velocidadMaxima, velocidadBase * multiplicador);
+        multiplicadorDificultadActual = Mathf.Max(1f, multiplicador);
+        RecalcularVelocidadActual();
+    }
+
+    /// <summary>
+    /// Extra (Actividad 4.6): Aumenta ligeramente la velocidad base cada 100 puntos obtenidos,
+    /// manteniendo el efecto del cubo amarillo (x3) como el protagonista principal.
+    /// </summary>
+    public void ActualizarVelocidadPorPuntos(int puntajeActual)
+    {
+        int escalonesDe100 = Mathf.Max(0, puntajeActual / 100);
+        bonoVelocidadPorPuntos = escalonesDe100 * incrementoCada100Puntos;
+        velocidadBase = velocidadBaseInicial + bonoVelocidadPorPuntos;
+        RecalcularVelocidadActual();
+    }
+
+    /// <summary>
+    /// Recalcula la velocidad efectiva del personaje combinando la velocidad base, la dificultad y el potenciador x3.
+    /// </summary>
+    private void RecalcularVelocidadActual()
+    {
+        float velocidadNormal = Mathf.Min(velocidadMaxima, velocidadBase * multiplicadorDificultadActual);
+
+        if (potenciadorActivo)
+        {
+            velocidad = velocidadNormal * multiplicadorBoostActual;
+        }
+        else
+        {
+            velocidad = velocidadNormal;
+        }
+    }
+
+    /// <summary>
+    /// Activa el Potenciador de Velocidad (Speed Boost) al recoger un cubo amarillo (Actividad 4.6).
+    /// Multiplica la velocidad (por ejemplo x3), enciende el TrailRenderer y dura máximo 3 segundos.
+    /// </summary>
+    public void ActivarPotenciadorVelocidad(float multiplicador = 3f, float duracion = 3f)
+    {
+        multiplicadorPotenciador = Mathf.Max(1.2f, multiplicador);
+        // Asegurar que el efecto nunca dure más de 3 segundos
+        duracionPotenciador = Mathf.Clamp(duracion, 0.5f, 3f);
+
+        if (corrutinaPotenciador != null)
+        {
+            StopCoroutine(corrutinaPotenciador);
+        }
+
+        corrutinaPotenciador = StartCoroutine(CorrutinaPotenciadorVelocidad(multiplicadorPotenciador, duracionPotenciador));
+    }
+
+    private IEnumerator CorrutinaPotenciadorVelocidad(float multiplicador, float duracion)
+    {
+        potenciadorActivo = true;
+        multiplicadorBoostActual = multiplicador;
+        tiempoRestanteBoost = Mathf.Clamp(duracion, 0.5f, 3f);
+        RecalcularVelocidadActual();
+
+        if (animator != null)
+        {
+            animator.speed = 1.8f;
+        }
+
+        EncenderEstelaVelocidad();
+
+        while (tiempoRestanteBoost > 0f)
+        {
+            yield return null;
+            tiempoRestanteBoost = Mathf.Max(0f, tiempoRestanteBoost - Time.deltaTime);
+        }
+
+        potenciadorActivo = false;
+        multiplicadorBoostActual = 1f;
+        tiempoRestanteBoost = 0f;
+        RecalcularVelocidadActual();
+
+        if (animator != null)
+        {
+            animator.speed = 1f;
+        }
+
+        ApagarEstelaVelocidad();
+        corrutinaPotenciador = null;
+    }
+
+    private void CancelarPotenciadorVelocidad()
+    {
+        if (corrutinaPotenciador != null)
+        {
+            StopCoroutine(corrutinaPotenciador);
+            corrutinaPotenciador = null;
+        }
+
+        potenciadorActivo = false;
+        multiplicadorBoostActual = 1f;
+        tiempoRestanteBoost = 0f;
+        RecalcularVelocidadActual();
+
+        if (animator != null)
+        {
+            animator.speed = 1f;
+        }
+
+        ApagarEstelaVelocidad();
+    }
+
+    /// <summary>
+    /// Crea o configura el TrailRenderer llamativo del personaje para el potenciador de velocidad.
+    /// </summary>
+    private void ConfigurarEstelaVelocidad()
+    {
+        if (estelaVelocidad == null)
+        {
+            Transform trEstela = transform.Find("Estela_Aura_Trail");
+            if (trEstela != null)
+            {
+                estelaVelocidad = trEstela.GetComponent<TrailRenderer>();
+            }
+        }
+
+        if (estelaVelocidad == null)
+        {
+            estelaVelocidad = GetComponentInChildren<TrailRenderer>(true);
+        }
+
+        if (estelaVelocidad == null)
+        {
+            GameObject objEstela = new GameObject("Estela_Aura_Trail");
+            objEstela.transform.SetParent(transform, false);
+            objEstela.transform.localPosition = new Vector3(0f, -0.08f, -0.08f);
+            estelaVelocidad = objEstela.AddComponent<TrailRenderer>();
+        }
+
+        estelaVelocidad.time = 0.50f;
+        estelaVelocidad.minVertexDistance = 0.06f;
+        estelaVelocidad.numCapVertices = 4;
+        estelaVelocidad.numCornerVertices = 4;
+        estelaVelocidad.shadowCastingMode = ShadowCastingMode.Off;
+        estelaVelocidad.receiveShadows = false;
+
+        AnimationCurve curvaAncho = new AnimationCurve();
+        curvaAncho.AddKey(0.0f, 0.78f);
+        curvaAncho.AddKey(0.45f, 0.48f);
+        curvaAncho.AddKey(1.0f, 0.0f);
+        estelaVelocidad.widthCurve = curvaAncho;
+
+        Shader shaderSprites = Shader.Find("Sprites/Default");
+        if (shaderSprites != null && estelaVelocidad.sharedMaterial == null)
+        {
+            estelaVelocidad.material = new Material(shaderSprites);
+        }
+
+        // Gradiente tricolor llamativo: Amarillo solar -> Naranja energético -> Dorado transparente
+        Gradient gradiente = new Gradient();
+        gradiente.SetKeys(
+            new GradientColorKey[]
+            {
+                new GradientColorKey(new Color(1.0f, 0.96f, 0.15f), 0.0f),
+                new GradientColorKey(new Color(1.0f, 0.58f, 0.04f), 0.55f),
+                new GradientColorKey(new Color(1.0f, 0.25f, 0.0f), 1.0f)
+            },
+            new GradientAlphaKey[]
+            {
+                new GradientAlphaKey(0.95f, 0.0f),
+                new GradientAlphaKey(0.75f, 0.50f),
+                new GradientAlphaKey(0.0f, 1.0f)
+            }
+        );
+        estelaVelocidad.colorGradient = gradiente;
+    }
+
+    private void EncenderEstelaVelocidad()
+    {
+        ConfigurarEstelaVelocidad();
+        if (estelaVelocidad != null)
+        {
+            estelaVelocidad.Clear();
+            estelaVelocidad.enabled = true;
+            estelaVelocidad.emitting = true;
+        }
+    }
+
+    private void ApagarEstelaVelocidad()
+    {
+        if (estelaVelocidad == null)
+        {
+            estelaVelocidad = GetComponentInChildren<TrailRenderer>(true);
+        }
+
+        if (estelaVelocidad != null)
+        {
+            estelaVelocidad.emitting = false;
+            estelaVelocidad.Clear();
+            estelaVelocidad.enabled = false;
+        }
     }
 
     public float ObtenerVelocidadActual()
@@ -322,19 +545,16 @@ public class PlayerController3D : MonoBehaviour
         }
 
         posicionAnterior = posicionInicialSegura;
-        velocidad = velocidadBase;
+        multiplicadorDificultadActual = 1f;
+        bonoVelocidadPorPuntos = 0f;
+        velocidadBase = velocidadBaseInicial;
+        CancelarPotenciadorVelocidad();
         enElSuelo = true;
         tiempoProteccionReinicio = 0.35f;
 
         if (animator != null)
         {
             animator.SetBool("isWalking", false);
-        }
-
-        TrailRenderer trail = GetComponentInChildren<TrailRenderer>();
-        if (trail != null)
-        {
-            trail.Clear();
         }
     }
 

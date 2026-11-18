@@ -2464,6 +2464,10 @@ MonoBehaviour:
   probabilidadColeccionables: 0.8
   maxMonedasPorModulo: 3
   puntosPorMoneda: 100
+  probabilidadPotenciadorVelocidad: 0.9
+  multiplicadorPotenciador: 3
+  duracionPotenciador: 3
+  colorCuboPotenciador: {r: 1, g: 0.92, b: 0.04, a: 1}
   totalModulosGenerados: 0
   distanciaActualEntrePlataformas: 0
   velocidadActualObstaculos: 0

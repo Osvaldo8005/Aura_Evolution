@@ -289,6 +289,88 @@ public class ModuloNivel : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Genera un cubo amarillo como Potenciador de Velocidad (Speed Boost) sobre el módulo (Actividad 4.6),
+    /// verificando que su posición no se encime con Zonas de Peligro (DeathParts) ni con monedas.
+    /// </summary>
+    public void GenerarPotenciadorVelocidadModulo(float multiplicador, float duracion, Color colorAmarillo, Material materialBase)
+    {
+        GameObject cuboBoost = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cuboBoost.name = $"Cubo_PotenciadorVelocidad_M{indiceModulo}";
+        cuboBoost.transform.SetParent(transform, false);
+
+        Vector3 posSegura = EncontrarPosicionSeguraPotenciador();
+        cuboBoost.transform.localPosition = posSegura;
+        cuboBoost.transform.localScale = new Vector3(1.25f, 1.25f, 1.25f);
+
+        Collider col = cuboBoost.GetComponent<Collider>();
+        if (col != null)
+        {
+            col.isTrigger = true;
+        }
+
+        AplicarMaterialConColor(cuboBoost, materialBase, colorAmarillo);
+
+        PotenciadorVelocidad scriptBoost = cuboBoost.AddComponent<PotenciadorVelocidad>();
+        scriptBoost.multiplicadorVelocidad = multiplicador;
+        scriptBoost.duracionEfecto = Mathf.Clamp(duracion, 0.5f, 3f);
+        scriptBoost.colorCubo = colorAmarillo;
+    }
+
+    private Vector3 EncontrarPosicionSeguraPotenciador()
+    {
+        float separacionCarril = (anchoX - 5f) / 3f;
+        int[] carriles = (indiceModulo <= 1) ? new int[] { 0, -1, 1 } : new int[] { -1, 0, 1 };
+        float[] zOpciones = (indiceModulo == 0)
+            ? new float[] { longitudZ * 0.68f, longitudZ * 0.80f, longitudZ * 0.52f }
+            : new float[] { longitudZ * 0.35f, longitudZ * 0.55f, longitudZ * 0.72f };
+
+        for (int c = 0; c < carriles.Length; c++)
+        {
+            float candidatoX = carriles[c] * separacionCarril;
+            for (int zIdx = 0; zIdx < zOpciones.Length; zIdx++)
+            {
+                float candidatoZ = zOpciones[zIdx];
+                Vector3 posCandidata = new Vector3(candidatoX, 1.35f, candidatoZ);
+
+                if (EsPosicionLibreDeObjetos(posCandidata))
+                {
+                    return posCandidata;
+                }
+            }
+        }
+
+        float zRespaldo = (indiceModulo == 0) ? (longitudZ * 0.70f) : (longitudZ * 0.22f);
+        return new Vector3(separacionCarril, 1.35f, zRespaldo);
+    }
+
+    private bool EsPosicionLibreDeObjetos(Vector3 posLocal)
+    {
+        for (int i = 0; i < deathPartsActivas.Count; i++)
+        {
+            if (deathPartsActivas[i] == null) continue;
+            Vector3 posDeath = deathPartsActivas[i].transform.localPosition;
+            Vector3 escalaDeath = deathPartsActivas[i].transform.localScale;
+
+            bool solapaX = Mathf.Abs(posLocal.x - posDeath.x) < (escalaDeath.x * 0.5f + 1.4f);
+            bool solapaZ = Mathf.Abs(posLocal.z - posDeath.z) < (escalaDeath.z * 0.5f + 1.4f);
+            if (solapaX && solapaZ) return false;
+        }
+
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            Transform hijo = transform.GetChild(i);
+            if (hijo == null || !hijo.name.StartsWith("Moneda_")) continue;
+
+            if (Vector3.Distance(posLocal, hijo.localPosition) < 2.4f)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private void CrearBordeLateral(string nombre, float posX, Material materialBase, Color colorBorde)
     {
         GameObject borde = GameObject.CreatePrimitive(PrimitiveType.Cube);
